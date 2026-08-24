@@ -679,7 +679,8 @@
                 }
 
                 .target-hud > div:nth-child(3),
-                .target-hud > div:nth-child(4) {
+                .target-hud > div:nth-child(4),
+                .bottom-comfort-status {
                     display: none;
                 }
 
@@ -692,6 +693,13 @@
                 .tour-title,
                 .loss-overlay-title {
                     font-size: 24px;
+                }
+            }
+
+            @media (max-width: 900px), (pointer: coarse) {
+                .bottom-comfort-status,
+                .comfort-card {
+                    display: none !important;
                 }
             }
 
@@ -1396,7 +1404,10 @@
                         >18° Port</span
                     >
                 </div>
-                <div style="color: var(--text-muted)">
+                <div
+                    class="bottom-comfort-status"
+                    style="color: var(--text-muted)"
+                >
                     Comfort:
                     <span
                         id="bottomComfortBadge"
