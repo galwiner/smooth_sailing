@@ -262,7 +262,8 @@
                 gap: 7px;
                 min-width: 250px;
             }
-            .mobile-version-note {
+            .mobile-version-note,
+            .mobile-controls-toggle {
                 display: none;
             }
             .btn {
@@ -647,6 +648,17 @@
 
                 .mobile-version-note strong {
                     color: #7dd3fc;
+                }
+
+                .mobile-controls-toggle {
+                    display: flex;
+                    width: 100%;
+                    padding: 8px 10px;
+                    font-size: 12px;
+                }
+
+                .controls-panel.mobile-collapsed .mobile-extra-control {
+                    display: none !important;
                 }
 
                 .hud-right > .card:not(.controls-panel) {
@@ -1109,8 +1121,8 @@
             </div>
 
             <div class="hud-right">
-                <div class="card controls-panel">
-                    <div class="mobile-version-note">
+                <div class="card controls-panel mobile-collapsed">
+                    <div class="mobile-version-note mobile-extra-control">
                         <strong>Mobile Regatta Mode:</strong> this phone layout
                         is simplified. Use a tablet or desktop browser for the
                         full simulator with modes, traffic, waves, currents,
@@ -1260,7 +1272,17 @@
                         />
                     </div>
 
-                    <div style="display: flex; gap: 6px">
+                    <button
+                        class="btn mobile-controls-toggle"
+                        id="btnMobileControlsToggle"
+                    >
+                        Mobile lite · more controls ▾
+                    </button>
+
+                    <div
+                        class="mobile-extra-control"
+                        style="display: flex; gap: 6px"
+                    >
                         <button
                             class="btn active"
                             id="btnAutoTrim"
@@ -1279,7 +1301,10 @@
                         </button>
                     </div>
 
-                    <div style="display: flex; gap: 6px">
+                    <div
+                        class="mobile-extra-control"
+                        style="display: flex; gap: 6px"
+                    >
                         <button
                             class="btn active"
                             id="btnCurrents"
@@ -1298,7 +1323,10 @@
                         </button>
                     </div>
 
-                    <div style="display: flex; gap: 6px">
+                    <div
+                        class="mobile-extra-control"
+                        style="display: flex; gap: 6px"
+                    >
                         <button
                             class="btn mobile-advanced-control"
                             id="btnSpinnaker"
@@ -1309,7 +1337,10 @@
                         </button>
                     </div>
 
-                    <div style="display: flex; gap: 6px">
+                    <div
+                        class="mobile-extra-control"
+                        style="display: flex; gap: 6px"
+                    >
                         <button
                             class="btn"
                             id="btnTack"
@@ -1328,7 +1359,10 @@
                         </button>
                     </div>
 
-                    <div style="display: flex; gap: 6px">
+                    <div
+                        class="mobile-extra-control"
+                        style="display: flex; gap: 6px"
+                    >
                         <button
                             class="btn"
                             id="btnReset"
@@ -3336,6 +3370,21 @@
                     const speedLabel =
                         state.simSpeed === 1.25 ? "1" : state.simSpeed;
                     btnSpeedEl.textContent = `Speed: ${speedLabel}x`;
+                });
+            }
+
+            const btnMobileControlsToggle = document.getElementById(
+                "btnMobileControlsToggle",
+            );
+            if (btnMobileControlsToggle) {
+                btnMobileControlsToggle.addEventListener("click", () => {
+                    const panel = document.querySelector(".controls-panel");
+                    if (!panel) return;
+                    const collapsed =
+                        panel.classList.toggle("mobile-collapsed");
+                    btnMobileControlsToggle.textContent = collapsed
+                        ? "Mobile lite · more controls ▾"
+                        : "Mobile lite · fewer controls ▴";
                 });
             }
 
