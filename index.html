@@ -875,6 +875,14 @@
                     </div>
 
                     <button
+                        class="btn"
+                        id="btnVariableWind"
+                        title="Variable Wind: Slowly shifts wind direction and strength. Starts OFF in Basic Wind Mode."
+                    >
+                        Variable Wind: OFF
+                    </button>
+
+                    <button
                         class="btn active"
                         id="btnVariableWaves"
                         title="Variable Waves: Slowly changes wave height and frequency around the selected sea state."
@@ -1217,6 +1225,8 @@
                 },
 
                 wind: {
+                    enabled: true,
+                    variable: false,
                     speed: 14.0,
                     dir: 0 * DEG_TO_RAD,
                     baseDir: 0 * DEG_TO_RAD,
@@ -1323,6 +1333,16 @@
                 setControlDisabled("btnCurrents", basic);
                 setControlDisabled("btnAutopilot", basic);
 
+                const variableWindBtn =
+                    document.getElementById("btnVariableWind");
+                if (variableWindBtn) {
+                    variableWindBtn.classList.toggle(
+                        "active",
+                        state.wind.variable,
+                    );
+                    variableWindBtn.textContent = `Variable Wind: ${state.wind.variable ? "ON" : "OFF"}`;
+                }
+
                 const currentsBtn = document.getElementById("btnCurrents");
                 if (currentsBtn) {
                     currentsBtn.classList.toggle(
@@ -1370,6 +1390,7 @@
                     state.waves.height = 0;
                     state.waves.basePeriod = 5.2;
                     state.waves.period = 5.2;
+                    state.wind.variable = false;
                     state.wind.baseDir = 0;
                     state.wind.dir = 0;
                     state.wind.targetDir = 0;
@@ -1377,6 +1398,7 @@
                     state.windShiftMessage =
                         "💨 Basic Wind Mode: only the wind affects your boat. Steer toward the buoy and watch your wind angle.";
                 } else if (state.mode === "comfort") {
+                    state.wind.variable = false;
                     state.current.enabled = false;
                     state.ghost.enabled = false;
                     state.ghost.difficulty = "off";
@@ -1384,6 +1406,7 @@
                     state.waves.baseHeight = 2.0;
                     state.waves.basePeriod = 4.1;
                 } else {
+                    state.wind.variable = state.mode === "endless";
                     state.current.enabled = state.mode === "endless";
                     state.waves.enabled = true;
                     if (state.waves.baseHeight <= 0.05) {
@@ -1502,8 +1525,8 @@
             }
 
             function updateDynamicWind(dt) {
-                if (state.mode !== "endless") return;
                 const w = state.wind;
+                if (!w.variable) return;
 
                 w.shiftTimer -= dt * state.simSpeed;
                 if (w.shiftTimer <= 0) {
@@ -2027,6 +2050,7 @@
                     toggleCurrents();
                 if (e.key.toLowerCase() === "m" && !isBasicMode())
                     toggleVariableWaves();
+                if (e.key.toLowerCase() === "g") toggleVariableWind();
                 if (e.key.toLowerCase() === "v") {
                     state.showVectors = !state.showVectors;
                     const btnVec = document.getElementById("btnVectors");
@@ -2154,6 +2178,17 @@
                     btn.classList.toggle("active", state.autoTrim);
                     btn.textContent = `Auto-Trim: ${state.autoTrim ? "ON" : "OFF"}`;
                 }
+            }
+
+            function toggleVariableWind() {
+                state.wind.variable = !state.wind.variable;
+                state.wind.baseDir = state.wind.dir;
+                state.wind.targetDir = state.wind.dir;
+                state.wind.shiftTimer = state.wind.variable ? 4.0 : 18.0;
+                state.windShiftMessage = state.wind.variable
+                    ? "💨 Variable wind enabled: watch for shifts in direction and speed."
+                    : "💨 Variable wind disabled: wind is steady again.";
+                syncFeatureControls();
             }
 
             function toggleVariableWaves() {
@@ -2348,6 +2383,10 @@
 
             const btnAutoP = document.getElementById("btnAutopilot");
             if (btnAutoP) btnAutoP.addEventListener("click", toggleAutopilot);
+
+            const btnVariableWind = document.getElementById("btnVariableWind");
+            if (btnVariableWind)
+                btnVariableWind.addEventListener("click", toggleVariableWind);
 
             const btnAutoT = document.getElementById("btnAutoTrim");
             if (btnAutoT) btnAutoT.addEventListener("click", toggleAutoTrim);
@@ -2950,7 +2989,7 @@
                 );
                 setText(
                     "windSubText",
-                    `From ${getCompassHeading(windFromDeg)} (Blowing ${(windFromDeg + 180) % 360}°)`,
+                    `${w.variable ? "Variable" : "Steady"} • From ${getCompassHeading(windFromDeg)} (Blowing ${(windFromDeg + 180) % 360}°)`,
                 );
                 if (cur.enabled && !isBasicMode()) {
                     setText(
@@ -3332,7 +3371,7 @@
                 {
                     eyebrow: "Welcome aboard",
                     title: "Start with wind only",
-                    body: "Basic mode is on by default: no currents, waves, ghost racer, or comfort challenge. Learn how wind moves the boat first.",
+                    body: "Basic mode is on by default with steady wind: no variable wind shifts, currents, waves, ghost racer, or comfort challenge. Learn how wind moves the boat first.",
                 },
                 {
                     eyebrow: "Step 2",
@@ -3352,7 +3391,7 @@
                 {
                     eyebrow: "Step 5",
                     title: "Add complexity when ready",
-                    body: "Switch Game Mode to Endless, Regatta Training, or Comfort Challenge to add currents, waves, competition, and advanced sailing decisions.",
+                    body: "Use Variable Wind when you want shifting breeze. Switch Game Mode to Endless, Regatta Training, or Comfort Challenge to add currents, waves, competition, and advanced sailing decisions.",
                 },
             ];
             let tourStepIdx = 0;
