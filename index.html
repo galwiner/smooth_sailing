@@ -1719,6 +1719,7 @@
                 setControlDisabled("btnVariableWaves", windOnlyMode);
                 setControlDisabled("btnCurrents", windOnlyMode);
                 setControlDisabled("btnAutopilot", windOnlyMode);
+                setControlDisabled("btnScenery", isRulesMode());
                 setControlDisabled("windDirSlider", !isManualWindMode());
 
                 const windDirectionGroup =
@@ -1751,6 +1752,12 @@
                         state.current.enabled,
                     );
                     currentsBtn.textContent = `Currents: ${state.current.enabled ? "ON" : "OFF"}`;
+                }
+
+                const sceneryBtn = document.getElementById("btnScenery");
+                if (sceneryBtn) {
+                    sceneryBtn.classList.toggle("active", state.showScenery);
+                    sceneryBtn.textContent = `Scenery: ${state.showScenery ? "ON" : "OFF"}`;
                 }
 
                 const variableWavesBtn =
@@ -1816,6 +1823,7 @@
                     if (state.isAutopilot) toggleAutopilot();
                     state.wind.variable = false;
                     state.current.enabled = false;
+                    state.showScenery = false;
                     state.ghost.enabled = false;
                     state.ghost.difficulty = "off";
                     state.waves.enabled = false;
@@ -1872,31 +1880,73 @@
                 state.rulesTrainer.traffic = [
                     {
                         name: "Starboard Traffic",
-                        x: b.x - 190,
-                        y: b.y - 60,
+                        x: b.x - 185,
+                        y: b.y - 95,
                         heading: 82 * DEG_TO_RAD,
-                        speed: 2.5,
+                        speed: 2.8,
                         color: "#f97316",
                     },
                     {
                         name: "Leeward Boat",
-                        x: b.x + 170,
-                        y: b.y + 35,
+                        x: b.x + 175,
+                        y: b.y + 60,
                         heading: -105 * DEG_TO_RAD,
-                        speed: 2.2,
+                        speed: 2.5,
                         color: "#eab308",
                     },
                     {
                         name: "Overtaken Boat",
-                        x: b.x + 25,
-                        y: b.y - 210,
+                        x: b.x + 20,
+                        y: b.y - 225,
                         heading: -8 * DEG_TO_RAD,
-                        speed: 1.5,
+                        speed: 1.6,
                         color: "#a78bfa",
+                    },
+                    {
+                        name: "Crossing Sloop",
+                        x: b.x + 235,
+                        y: b.y - 80,
+                        heading: -78 * DEG_TO_RAD,
+                        speed: 2.7,
+                        color: "#22d3ee",
+                    },
+                    {
+                        name: "Close Reach Boat",
+                        x: b.x - 140,
+                        y: b.y + 150,
+                        heading: 38 * DEG_TO_RAD,
+                        speed: 2.4,
+                        color: "#fb7185",
+                    },
+                    {
+                        name: "Training Dinghy",
+                        x: b.x + 85,
+                        y: b.y + 230,
+                        heading: -170 * DEG_TO_RAD,
+                        speed: 1.9,
+                        color: "#34d399",
                     },
                 ];
                 state.rulesTrainer.activeHint =
                     "Sail to the target while keeping clear when you are the give-way boat.";
+            }
+
+            function placeRulesTarget() {
+                const b = state.boat;
+                const patterns = [
+                    { x: 210, y: -125, color: "#4ade80" },
+                    { x: -210, y: -115, color: "#f59e0b" },
+                    { x: 180, y: 145, color: "#4ade80" },
+                    { x: -185, y: 135, color: "#f59e0b" },
+                ];
+                const p = patterns[state.score % patterns.length];
+                state.target = {
+                    name: `Rules Mark #${state.score + 1}`,
+                    x: b.x + p.x,
+                    y: b.y + p.y,
+                    radius: 25,
+                    color: p.color,
+                };
             }
 
             function getBoatTack(heading) {
@@ -1994,9 +2044,12 @@
                         state.simSpeed;
                     if (Math.hypot(boat.x - b.x, boat.y - b.y) > 440) {
                         const slots = [
-                            { x: -210, y: -80, h: 82 },
-                            { x: 190, y: 55, h: -105 },
-                            { x: 35, y: -230, h: -8 },
+                            { x: -220, y: -100, h: 82 },
+                            { x: 205, y: 65, h: -105 },
+                            { x: 30, y: -245, h: -8 },
+                            { x: 250, y: -95, h: -78 },
+                            { x: -160, y: 165, h: 38 },
+                            { x: 90, y: 250, h: -170 },
                         ];
                         const slot = slots[idx % slots.length];
                         boat.x = b.x + slot.x;
@@ -2010,27 +2063,31 @@
                 if (!isRulesMode() || state.rulesTrainer.failed) return;
                 let nearest = null;
                 let nearestDist = Infinity;
-                state.rulesTrainer.traffic.forEach((boat) => {
+
+                for (const boat of state.rulesTrainer.traffic) {
                     const dist = Math.hypot(
                         boat.x - state.boat.x,
                         boat.y - state.boat.y,
                     );
+                    const situation = getRightOfWaySituation(boat);
+
+                    if (dist < 38 && situation.playerGiveWay) {
+                        failRightOfWay(
+                            `${situation.label}: ${situation.message} You came within ${Math.round(dist)}m.`,
+                        );
+                        return;
+                    }
+
                     if (dist < nearestDist) {
-                        nearest = boat;
+                        nearest = { boat, situation };
                         nearestDist = dist;
                     }
-                });
+                }
+
                 if (!nearest) return;
-
-                const situation = getRightOfWaySituation(nearest);
-                state.rulesTrainer.activeHint = situation.message;
-
-                if (nearestDist < 30 && situation.playerGiveWay) {
-                    failRightOfWay(
-                        `${situation.label}: ${situation.message} You came within ${Math.round(nearestDist)}m.`,
-                    );
-                } else if (nearestDist < 70) {
-                    state.windShiftMessage = `⚖️ ${situation.message}`;
+                state.rulesTrainer.activeHint = nearest.situation.message;
+                if (nearestDist < 90) {
+                    state.windShiftMessage = `⚖️ ${nearest.situation.message}`;
                 }
             }
 
@@ -2148,7 +2205,7 @@
                 const b = state.boat;
                 const w = state.wind;
                 const target =
-                    state.mode === "endless"
+                    state.mode === "endless" || isRulesMode()
                         ? state.target
                         : state.waypoints[state.currentWaypointIdx];
 
@@ -2185,7 +2242,7 @@
                 if (!g.enabled || g.difficulty === "off") return;
                 const w = state.wind;
                 const target =
-                    state.mode === "endless"
+                    state.mode === "endless" || isRulesMode()
                         ? state.target
                         : state.waypoints[state.ghostWaypointIdx];
 
@@ -2558,7 +2615,7 @@
                 checkRightOfWay();
 
                 const activeTarget =
-                    state.mode === "endless"
+                    state.mode === "endless" || isRulesMode()
                         ? state.target
                         : state.waypoints[state.currentWaypointIdx];
                 const toTargetX = activeTarget.x - b.x,
@@ -2574,7 +2631,7 @@
                     MPS_TO_KNOTS;
 
                 const ghostTarget =
-                    state.mode === "endless"
+                    state.mode === "endless" || isRulesMode()
                         ? state.target
                         : state.waypoints[state.ghostWaypointIdx];
                 const ghostToTargetX = ghostTarget.x - g.x,
@@ -2585,7 +2642,12 @@
 
                 if (dist < activeTarget.radius) {
                     if (state.mode === "endless") spawnNextTarget("player");
-                    else {
+                    else if (isRulesMode()) {
+                        state.score++;
+                        placeRulesTarget();
+                        resetRulesTraffic();
+                        state.windShiftMessage = `✅ Mark rounded. Next target crosses fresh traffic.`;
+                    } else {
                         state.score++;
                         state.currentWaypointIdx =
                             (state.currentWaypointIdx + 1) %
@@ -2672,7 +2734,8 @@
                 )
                     toggleVariableWaves();
                 if (e.key.toLowerCase() === "g") toggleVariableWind();
-                if (e.key.toLowerCase() === "l") toggleScenery();
+                if (e.key.toLowerCase() === "l" && !isRulesMode())
+                    toggleScenery();
                 if (e.key.toLowerCase() === "v") {
                     state.showVectors = !state.showVectors;
                     const btnVec = document.getElementById("btnVectors");
@@ -2847,6 +2910,7 @@
             }
 
             function toggleScenery() {
+                if (isRulesMode()) return;
                 state.showScenery = !state.showScenery;
                 const btn = document.getElementById("btnScenery");
                 if (btn) {
@@ -2928,7 +2992,6 @@
                 state.rulesTrainer.failureReason = "";
                 setStyle("groundedOverlay", "display", "none");
                 setStyle("rulesLossOverlay", "display", "none");
-                resetRulesTraffic();
                 applyModeSettings();
                 applyMobileRegattaDefaults();
                 resetComfortChallenge();
@@ -2939,6 +3002,11 @@
                     radius: 25,
                     color: "#4ade80",
                 };
+
+                if (isRulesMode()) {
+                    resetRulesTraffic();
+                    placeRulesTarget();
+                }
 
                 state.ghost.x = 25;
                 state.ghost.y = 130;
@@ -3135,7 +3203,7 @@
                 const waves = state.waves;
                 const diag = state.diagnostics;
                 const activeTarget =
-                    state.mode === "endless"
+                    state.mode === "endless" || isRulesMode()
                         ? state.target
                         : state.waypoints[state.currentWaypointIdx];
 
