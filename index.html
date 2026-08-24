@@ -830,6 +830,9 @@
                             <option value="basic" selected>
                                 💨 Basic Wind Mode (Wind Only)
                             </option>
+                            <option value="manual">
+                                🧭 Manual Wind Direction
+                            </option>
                             <option value="endless">
                                 🌊 Endless Navigator (Currents + Shifts)
                             </option>
@@ -881,6 +884,25 @@
                     >
                         Variable Wind: OFF
                     </button>
+
+                    <div
+                        class="slider-group"
+                        id="windDirectionGroup"
+                        title="Manual Wind Direction: Choose the compass direction the true wind comes FROM."
+                    >
+                        <div class="slider-header">
+                            <span>Wind Direction</span>
+                            <span id="windDirVal">000° N</span>
+                        </div>
+                        <input
+                            type="range"
+                            id="windDirSlider"
+                            min="0"
+                            max="359"
+                            value="0"
+                            step="1"
+                        />
+                    </div>
 
                     <button
                         class="btn active"
@@ -1312,30 +1334,67 @@
                 return state.mode === "basic";
             }
 
+            function isManualWindMode() {
+                return state.mode === "manual";
+            }
+
+            function updateWindDirectionControl(deg) {
+                const normalizedDeg = ((Math.round(deg) % 360) + 360) % 360;
+                setText(
+                    "windDirVal",
+                    `${normalizedDeg.toString().padStart(3, "0")}° ${getCompassHeading(normalizedDeg)}`,
+                );
+                const slider = document.getElementById("windDirSlider");
+                if (slider) slider.value = normalizedDeg;
+            }
+
+            function setManualWindDirection(deg) {
+                const normalizedDeg = ((Math.round(deg) % 360) + 360) % 360;
+                state.wind.dir = normalizedDeg * DEG_TO_RAD;
+                state.wind.baseDir = state.wind.dir;
+                state.wind.targetDir = state.wind.dir;
+                state.wind.shiftTimer = 18.0;
+                updateWindDirectionControl(normalizedDeg);
+            }
+
             function setControlDisabled(id, disabled) {
                 const el = document.getElementById(id);
                 if (!el) return;
                 el.disabled = disabled;
                 el.style.opacity = disabled ? "0.55" : "1";
                 el.title = disabled
-                    ? "Disabled in Basic Wind Mode. Switch modes to enable this feature."
+                    ? "Disabled in wind-only modes. Switch modes to enable this feature."
                     : el.title;
             }
 
             function syncFeatureControls() {
-                const basic = isBasicMode();
+                const windOnlyMode = isBasicMode() || isManualWindMode();
 
                 const ghostSelect = document.getElementById("ghostSelect");
                 if (ghostSelect) ghostSelect.value = state.ghost.difficulty;
-                setControlDisabled("ghostSelect", basic);
-                setControlDisabled("waveSelect", basic);
-                setControlDisabled("btnVariableWaves", basic);
-                setControlDisabled("btnCurrents", basic);
-                setControlDisabled("btnAutopilot", basic);
+                setControlDisabled("ghostSelect", windOnlyMode);
+                setControlDisabled("waveSelect", windOnlyMode);
+                setControlDisabled("btnVariableWaves", windOnlyMode);
+                setControlDisabled("btnCurrents", windOnlyMode);
+                setControlDisabled("btnAutopilot", windOnlyMode);
+                setControlDisabled("windDirSlider", !isManualWindMode());
+
+                const windDirectionGroup =
+                    document.getElementById("windDirectionGroup");
+                if (windDirectionGroup) {
+                    windDirectionGroup.style.opacity = isManualWindMode()
+                        ? "1"
+                        : "0.55";
+                }
+                updateWindDirectionControl(state.wind.dir * RAD_TO_DEG);
 
                 const variableWindBtn =
                     document.getElementById("btnVariableWind");
                 if (variableWindBtn) {
+                    variableWindBtn.disabled = isManualWindMode();
+                    variableWindBtn.style.opacity = isManualWindMode()
+                        ? "0.55"
+                        : "1";
                     variableWindBtn.classList.toggle(
                         "active",
                         state.wind.variable,
@@ -1391,12 +1450,26 @@
                     state.waves.basePeriod = 5.2;
                     state.waves.period = 5.2;
                     state.wind.variable = false;
-                    state.wind.baseDir = 0;
-                    state.wind.dir = 0;
-                    state.wind.targetDir = 0;
                     state.wind.speed = 14.0;
+                    setManualWindDirection(0);
                     state.windShiftMessage =
-                        "💨 Basic Wind Mode: only the wind affects your boat. Steer toward the buoy and watch your wind angle.";
+                        "💨 Basic Wind Mode: only steady wind affects your boat. Steer toward the buoy and watch your wind angle.";
+                } else if (isManualWindMode()) {
+                    if (state.isAutopilot) toggleAutopilot();
+                    state.current.enabled = false;
+                    state.ghost.enabled = false;
+                    state.ghost.difficulty = "off";
+                    state.waves.enabled = false;
+                    state.waves.baseHeight = 0;
+                    state.waves.height = 0;
+                    state.waves.basePeriod = 5.2;
+                    state.waves.period = 5.2;
+                    state.wind.variable = false;
+                    state.wind.speed = 14.0;
+                    const windSlider = document.getElementById("windDirSlider");
+                    setManualWindDirection(windSlider ? windSlider.value : 0);
+                    state.windShiftMessage =
+                        "🧭 Manual Wind Mode: use the Wind Direction slider to choose where the wind comes from.";
                 } else if (state.mode === "comfort") {
                     state.wind.variable = false;
                     state.current.enabled = false;
@@ -1422,11 +1495,12 @@
 
                 const waveSelect = document.getElementById("waveSelect");
                 if (waveSelect)
-                    waveSelect.value = isBasicMode()
-                        ? "off"
-                        : state.mode === "comfort"
-                          ? "rough"
-                          : "moderate";
+                    waveSelect.value =
+                        isBasicMode() || isManualWindMode()
+                            ? "off"
+                            : state.mode === "comfort"
+                              ? "rough"
+                              : "moderate";
                 syncFeatureControls();
             }
 
@@ -2046,9 +2120,17 @@
                 }
                 if (e.key.toLowerCase() === "t") toggleAutoTrim();
                 if (e.key.toLowerCase() === "p") toggleAutopilot();
-                if (e.key.toLowerCase() === "c" && !isBasicMode())
+                if (
+                    e.key.toLowerCase() === "c" &&
+                    !isBasicMode() &&
+                    !isManualWindMode()
+                )
                     toggleCurrents();
-                if (e.key.toLowerCase() === "m" && !isBasicMode())
+                if (
+                    e.key.toLowerCase() === "m" &&
+                    !isBasicMode() &&
+                    !isManualWindMode()
+                )
                     toggleVariableWaves();
                 if (e.key.toLowerCase() === "g") toggleVariableWind();
                 if (e.key.toLowerCase() === "v") {
@@ -2181,6 +2263,7 @@
             }
 
             function toggleVariableWind() {
+                if (isManualWindMode()) return;
                 state.wind.variable = !state.wind.variable;
                 state.wind.baseDir = state.wind.dir;
                 state.wind.targetDir = state.wind.dir;
@@ -2192,7 +2275,7 @@
             }
 
             function toggleVariableWaves() {
-                if (isBasicMode()) return;
+                if (isBasicMode() || isManualWindMode()) return;
                 state.waves.enabled = !state.waves.enabled;
                 if (!state.waves.enabled) {
                     state.waves.height = state.waves.baseHeight;
@@ -2207,7 +2290,7 @@
             }
 
             function toggleCurrents() {
-                if (isBasicMode()) return;
+                if (isBasicMode() || isManualWindMode()) return;
                 state.current.enabled = !state.current.enabled;
                 const btn = document.getElementById("btnCurrents");
                 if (btn) {
@@ -2222,7 +2305,8 @@
             }
 
             function toggleAutopilot() {
-                if (isBasicMode() && !state.isAutopilot) return;
+                if ((isBasicMode() || isManualWindMode()) && !state.isAutopilot)
+                    return;
                 state.isAutopilot = !state.isAutopilot;
                 const btn = document.getElementById("btnAutopilot");
                 if (state.isAutopilot) {
@@ -2320,7 +2404,7 @@
             const ghostSelectEl = document.getElementById("ghostSelect");
             if (ghostSelectEl) {
                 ghostSelectEl.addEventListener("change", (e) => {
-                    if (isBasicMode()) {
+                    if (isBasicMode() || isManualWindMode()) {
                         e.target.value = "off";
                         e.target.blur();
                         return;
@@ -2341,6 +2425,10 @@
                 waveSelectEl.addEventListener("change", (e) => {
                     const val = e.target.value;
                     e.target.blur();
+                    if (isBasicMode() || isManualWindMode()) {
+                        e.target.value = "off";
+                        return;
+                    }
                     if (val === "off") {
                         state.waves.enabled = false;
                         state.waves.baseHeight = 0;
@@ -2378,6 +2466,16 @@
                     if (state.isAutopilot) toggleAutopilot();
                     state.boat.sheet = parseFloat(e.target.value);
                     if (state.autoTrim) toggleAutoTrim();
+                });
+            }
+
+            const windDirSlider = document.getElementById("windDirSlider");
+            if (windDirSlider) {
+                windDirSlider.addEventListener("input", (e) => {
+                    if (!isManualWindMode()) return;
+                    setManualWindDirection(e.target.value);
+                    state.windShiftMessage =
+                        "🧭 Manual Wind Mode: wind direction updated. Watch the no-go sector rotate with the wind.";
                 });
             }
 
@@ -3005,6 +3103,7 @@
                     "windStatusText",
                     `${Math.round(w.speed)} KTS @ ${windFromDeg}°`,
                 );
+                updateWindDirectionControl(windFromDeg);
                 setText(
                     "windSubText",
                     `${w.variable ? "Variable" : "Steady"} • From ${getCompassHeading(windFromDeg)} (Blowing ${(windFromDeg + 180) % 360}°)`,
@@ -3225,27 +3324,44 @@
                     return;
                 }
 
-                if (isBasicMode()) {
-                    setText("modeStatus", "💨 Basic Wind Mode");
+                if (isBasicMode() || isManualWindMode()) {
+                    setText(
+                        "modeStatus",
+                        isManualWindMode()
+                            ? "🧭 Manual Wind Direction"
+                            : "💨 Basic Wind Mode",
+                    );
                     setStyle("modeStatus", "color", "var(--accent-blue)");
                     setStyle(
                         "coachBanner",
                         "borderColor",
                         "var(--accent-blue)",
                     );
-                    setText("coachBadge", "💨 BASIC WIND MODE");
+                    setText(
+                        "coachBadge",
+                        isManualWindMode()
+                            ? "🧭 MANUAL WIND MODE"
+                            : "💨 BASIC WIND MODE",
+                    );
                     setStyle("coachBadge", "color", "var(--accent-blue)");
-                    setText("coachStatusTag", "WIND ONLY");
+                    setText(
+                        "coachStatusTag",
+                        isManualWindMode() ? "SET WIND DIRECTION" : "WIND ONLY",
+                    );
                     setStyle("coachStatusTag", "color", "var(--accent-yellow)");
                     if (!state.windShiftMessage) {
                         setHTML(
                             "coachInstruction",
-                            "Steer to the active buoy while keeping your boat about 45° off the wind.",
+                            isManualWindMode()
+                                ? "Move the Wind Direction slider to rotate the wind and the red no-go sector."
+                                : "Steer to the active buoy while keeping your boat about 45° off the wind.",
                         );
                     }
                     setHTML(
                         "coachDetail",
-                        "Currents, waves, ghost competition, and comfort challenge are off. Switch Game Mode when you are ready for advanced sailing.",
+                        isManualWindMode()
+                            ? "The slider sets the direction the true wind comes from. Currents, waves, ghost competition, and variable wind are off."
+                            : "Currents, waves, ghost competition, and comfort challenge are off. Switch Game Mode when you are ready for advanced sailing.",
                     );
                 }
 
@@ -3409,7 +3525,7 @@
                 {
                     eyebrow: "Step 5",
                     title: "Add complexity when ready",
-                    body: "Use Variable Wind when you want shifting breeze. Switch Game Mode to Endless, Regatta Training, or Comfort Challenge to add currents, waves, competition, and advanced sailing decisions.",
+                    body: "Use Manual Wind Direction to experiment with wind angles, or Variable Wind when you want shifting breeze. Switch to Endless, Regatta Training, or Comfort Challenge for currents, waves, and competition.",
                 },
             ];
             let tourStepIdx = 0;
