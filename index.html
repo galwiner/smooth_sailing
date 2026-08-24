@@ -1485,9 +1485,9 @@
             const DEG_TO_RAD = Math.PI / 180;
             const RAD_TO_DEG = 180 / Math.PI;
             const AIR_DENSITY = 1.225;
-            const SPINNAKER_EFFECTIVE_AREA = 44;
-            const SPINNAKER_TRUE_WIND_SHARE = 0.85;
-            const SPINNAKER_APPARENT_WIND_SHARE = 0.25;
+            const SPINNAKER_EFFECTIVE_AREA = 90;
+            const SPINNAKER_TRUE_WIND_SHARE = 1.05;
+            const SPINNAKER_APPARENT_WIND_SHARE = 0.3;
 
             const state = {
                 mode: "basic",
@@ -2536,15 +2536,15 @@
                 let spinnakerDrive = 0;
                 if (!isGhost && b.spinnakerHoisted) {
                     const twaAbs = Math.abs(twaDeg);
-                    const usable = twaAbs >= 105 && twaAbs <= 178;
+                    const usable = twaAbs >= 100 && twaAbs <= 180;
                     b.spinnakerCollapsed = !usable;
                     if (usable) {
-                        const peak = 140;
+                        const peak = 155;
                         const normalized = Math.max(
                             0,
-                            1 - Math.abs(twaAbs - peak) / 45,
+                            1 - Math.abs(twaAbs - peak) / 75,
                         );
-                        b.spinnakerPower = Math.max(0.25, normalized);
+                        b.spinnakerPower = Math.max(0.65, normalized);
                         const spinnakerWindPressure =
                             0.5 *
                             AIR_DENSITY *
@@ -4511,7 +4511,7 @@
                     setStyle("coachStatusTag", "color", "var(--accent-yellow)");
                     setHTML(
                         "coachInstruction",
-                        "Too high for the spinnaker — bear away below about 105° true wind angle or douse it with <strong>X</strong>.",
+                        "Too high for the spinnaker — bear away below about 100° true wind angle or douse it with <strong>X</strong>.",
                     );
                     setHTML(
                         "coachDetail",
