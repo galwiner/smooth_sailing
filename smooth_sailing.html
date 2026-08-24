@@ -1,0 +1,3069 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>
+            Sailing Simulator — Regatta Racing, Wind Shifts & Currents
+        </title>
+        <style>
+            :root {
+                --bg-dark: #060d17;
+                --panel-bg: rgba(13, 23, 41, 0.94);
+                --panel-border: rgba(255, 255, 255, 0.16);
+                --accent-blue: #38bdf8;
+                --accent-teal: #06b6d4;
+                --accent-green: #4ade80;
+                --accent-orange: #fb923c;
+                --accent-purple: #c084fc;
+                --accent-yellow: #fde047;
+                --accent-red: #f87171;
+                --text-main: #f8fafc;
+                --text-muted: #94a3b8;
+            }
+
+            * {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+                user-select: none;
+            }
+            body {
+                font-family:
+                    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                    sans-serif;
+                background-color: var(--bg-dark);
+                color: var(--text-main);
+                overflow: hidden;
+                height: 100vh;
+                width: 100vw;
+                display: flex;
+            }
+
+            #canvas-container {
+                flex: 1;
+                height: 100%;
+                position: relative;
+                background: #0284c7;
+            }
+            canvas {
+                display: block;
+                width: 100%;
+                height: 100%;
+                cursor: crosshair;
+            }
+
+            .coach-banner {
+                position: absolute;
+                top: 14px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: var(--panel-bg);
+                backdrop-filter: blur(14px);
+                border: 2px solid var(--accent-blue);
+                border-radius: 14px;
+                padding: 10px 22px;
+                max-width: 780px;
+                width: 92%;
+                box-shadow: 0 10px 35px rgba(0, 0, 0, 0.6);
+                z-index: 50;
+                display: flex;
+                flex-direction: column;
+                gap: 4px;
+                transition: border-color 0.3s ease;
+            }
+
+            .coach-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                font-size: 11px;
+                text-transform: uppercase;
+                letter-spacing: 0.1em;
+                font-weight: 700;
+            }
+
+            .coach-instruction {
+                font-size: 15px;
+                font-weight: 700;
+                color: #ffffff;
+                line-height: 1.3;
+            }
+
+            .coach-detail {
+                font-size: 12px;
+                color: var(--text-muted);
+                line-height: 1.3;
+            }
+
+            .key-pill {
+                background: #334155;
+                color: #fde047;
+                padding: 2px 8px;
+                border-radius: 5px;
+                font-family: monospace;
+                font-size: 12px;
+                font-weight: 700;
+                border: 1px solid #475569;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            }
+
+            .hud-left {
+                position: absolute;
+                top: 105px;
+                left: 16px;
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+                pointer-events: none;
+                z-index: 20;
+            }
+
+            .hud-right {
+                position: absolute;
+                top: 105px;
+                right: 16px;
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+                pointer-events: auto;
+                z-index: 20;
+                max-height: calc(100vh - 120px);
+                overflow-y: auto;
+            }
+
+            .card {
+                background: var(--panel-bg);
+                backdrop-filter: blur(10px);
+                border: 1px solid var(--panel-border);
+                border-radius: 10px;
+                padding: 10px 14px;
+                box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+                position: relative;
+            }
+
+            .card-title {
+                font-size: 11px;
+                text-transform: uppercase;
+                letter-spacing: 0.08em;
+                color: var(--text-muted);
+                margin-bottom: 4px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+
+            .metric-row {
+                display: flex;
+                align-items: baseline;
+                gap: 6px;
+            }
+            .metric-val {
+                font-size: 22px;
+                font-weight: 700;
+                font-variant-numeric: tabular-nums;
+            }
+            .metric-unit {
+                font-size: 11px;
+                color: var(--text-muted);
+            }
+
+            .comfort-card {
+                border-left: 4px solid var(--accent-green);
+                min-width: 240px;
+            }
+            .comfort-val {
+                font-size: 20px;
+                font-weight: 800;
+            }
+
+            .inclinometer-bar {
+                width: 100%;
+                height: 7px;
+                background: #334155;
+                border-radius: 4px;
+                overflow: hidden;
+                position: relative;
+                margin-top: 4px;
+            }
+            .inclinometer-fill {
+                height: 100%;
+                width: 80%;
+                background: var(--accent-green);
+                transition:
+                    width 0.15s,
+                    background-color 0.2s;
+            }
+
+            .vmg-card {
+                border-left: 4px solid var(--accent-green);
+                min-width: 230px;
+            }
+            .vmg-val {
+                color: var(--accent-green);
+            }
+
+            .instruments-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
+                min-width: 240px;
+            }
+            .sub-metric {
+                font-size: 14px;
+                font-weight: 600;
+                font-variant-numeric: tabular-nums;
+            }
+
+            .env-badge-container {
+                display: flex;
+                flex-direction: column;
+                gap: 5px;
+            }
+            .wind-badge {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                background: rgba(56, 189, 248, 0.15);
+                border: 1px solid rgba(56, 189, 248, 0.4);
+                padding: 5px 8px;
+                border-radius: 6px;
+            }
+            .current-badge {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                background: rgba(6, 182, 212, 0.15);
+                border: 1px solid rgba(6, 182, 212, 0.4);
+                padding: 5px 8px;
+                border-radius: 6px;
+            }
+            .waves-badge {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                background: rgba(192, 132, 252, 0.15);
+                border: 1px solid rgba(192, 132, 252, 0.4);
+                padding: 5px 8px;
+                border-radius: 6px;
+            }
+
+            .controls-panel {
+                display: flex;
+                flex-direction: column;
+                gap: 7px;
+                min-width: 250px;
+            }
+            .btn {
+                background: #1e293b;
+                color: #f8fafc;
+                border: 1px solid rgba(255, 255, 255, 0.15);
+                border-radius: 6px;
+                padding: 7px 10px;
+                font-size: 12px;
+                font-weight: 600;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 6px;
+                transition: all 0.15s ease;
+            }
+            .btn:hover {
+                background: #334155;
+            }
+            .btn:active {
+                transform: scale(0.98);
+            }
+            .btn.active {
+                background: #0284c7;
+                border-color: #38bdf8;
+                color: white;
+            }
+            .btn.demo-btn {
+                background: linear-gradient(135deg, #0284c7, #2563eb);
+                border-color: #60a5fa;
+                color: white;
+                font-size: 12px;
+                font-weight: 700;
+            }
+            .btn.demo-btn.running {
+                background: linear-gradient(135deg, #16a34a, #15803d);
+                border-color: #4ade80;
+            }
+
+            .select-input {
+                background: #0f172a;
+                color: #f8fafc;
+                border: 1px solid rgba(255, 255, 255, 0.25);
+                border-radius: 6px;
+                padding: 5px 8px;
+                font-size: 11px;
+                font-weight: 600;
+                width: 100%;
+                outline: none;
+                cursor: pointer;
+            }
+
+            .slider-group {
+                display: flex;
+                flex-direction: column;
+                gap: 2px;
+            }
+            .slider-header {
+                display: flex;
+                justify-content: space-between;
+                font-size: 11px;
+                color: var(--text-muted);
+            }
+            input[type="range"] {
+                width: 100%;
+                accent-color: var(--accent-blue);
+                cursor: pointer;
+            }
+
+            .on-screen-helm {
+                position: absolute;
+                bottom: 20px;
+                left: 20px;
+                display: flex;
+                gap: 8px;
+                z-index: 30;
+            }
+            .helm-btn {
+                background: var(--panel-bg);
+                backdrop-filter: blur(10px);
+                border: 2px solid var(--accent-blue);
+                color: white;
+                font-size: 14px;
+                font-weight: 800;
+                padding: 10px 16px;
+                border-radius: 10px;
+                cursor: pointer;
+                box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+            }
+            .helm-btn:active {
+                background: #0284c7;
+            }
+
+            .legend-section {
+                margin-bottom: 5px;
+            }
+            .legend-section:last-child {
+                margin-bottom: 0;
+            }
+            .legend-section-title {
+                font-size: 10px;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+                color: #cbd5e1;
+                margin-bottom: 2px;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+                padding-bottom: 2px;
+            }
+            .legend-item {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                font-size: 11px;
+                margin-bottom: 2px;
+            }
+            .legend-dot {
+                width: 9px;
+                height: 9px;
+                border-radius: 50%;
+                flex-shrink: 0;
+            }
+
+            .target-hud {
+                position: absolute;
+                bottom: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: var(--panel-bg);
+                backdrop-filter: blur(12px);
+                border: 1px solid var(--panel-border);
+                padding: 8px 24px;
+                border-radius: 30px;
+                display: flex;
+                align-items: center;
+                gap: 16px;
+                font-size: 13px;
+                font-weight: 600;
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+                pointer-events: auto;
+                z-index: 20;
+            }
+
+            .loss-overlay {
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: rgba(127, 29, 29, 0.94);
+                border: 3px solid var(--accent-red);
+                border-radius: 22px;
+                padding: 28px 42px;
+                color: #fff;
+                text-align: center;
+                box-shadow: 0 18px 70px rgba(0, 0, 0, 0.72);
+                z-index: 80;
+                display: none;
+                pointer-events: none;
+                max-width: min(560px, 90vw);
+            }
+
+            .loss-overlay-title {
+                font-size: 34px;
+                font-weight: 900;
+                letter-spacing: 0.02em;
+                margin-bottom: 8px;
+            }
+
+            .loss-overlay-detail {
+                font-size: 15px;
+                color: #fecaca;
+                font-weight: 700;
+            }
+
+            [title] {
+                cursor: help;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="canvas-container">
+            <canvas id="simCanvas"></canvas>
+
+            <div class="loss-overlay" id="comfortLossOverlay">
+                <div class="loss-overlay-title">
+                    😡 Your friends are angry now
+                </div>
+                <div class="loss-overlay-detail">
+                    They got seasick from too much chop. Press Reset to try
+                    again.
+                </div>
+            </div>
+
+            <div class="coach-banner" id="coachBanner">
+                <div class="coach-header">
+                    <span id="coachBadge" style="color: var(--accent-blue)"
+                        >🧭 REGATTA RACING MODE</span
+                    >
+                    <span
+                        id="coachStatusTag"
+                        style="color: var(--accent-yellow)"
+                        >ACTIVE COURSE</span
+                    >
+                </div>
+                <div class="coach-instruction" id="coachInstruction">
+                    Sail to the buoy at 45° to the wind! Use keyboard or
+                    on-screen buttons to steer.
+                </div>
+                <div class="coach-detail" id="coachDetail">
+                    Press <span class="key-pill">A</span> /
+                    <span class="key-pill">D</span> or on-screen ◀️ / ▶️ buttons
+                    to steer. Press <span class="key-pill">Spacebar</span> to
+                    Tack!
+                </div>
+            </div>
+
+            <div class="on-screen-helm">
+                <button
+                    class="helm-btn"
+                    id="btnSteerLeft"
+                    title="Turn Left (A)"
+                >
+                    ◀️ Steer Port (A)
+                </button>
+                <button
+                    class="helm-btn"
+                    id="btnSteerRight"
+                    title="Turn Right (D)"
+                >
+                    Steer Stbd (D) ▶️
+                </button>
+            </div>
+
+            <div class="hud-left">
+                <div
+                    class="card comfort-card"
+                    id="comfortCard"
+                    title="Passenger Comfort Index: Measures motion stability for guests on board."
+                >
+                    <div class="card-title">
+                        <span>🥂 Passenger Comfort</span>
+                        <span
+                            id="comfortScore"
+                            style="
+                                font-size: 11px;
+                                font-weight: 700;
+                                color: var(--accent-green);
+                            "
+                            >95%</span
+                        >
+                    </div>
+                    <div class="metric-row">
+                        <span
+                            class="comfort-val"
+                            id="comfortRating"
+                            style="color: var(--accent-green)"
+                            >Smooth Cruise</span
+                        >
+                    </div>
+                    <div class="inclinometer-bar">
+                        <div class="inclinometer-fill" id="comfortBar"></div>
+                    </div>
+                    <div
+                        style="
+                            display: flex;
+                            justify-content: space-between;
+                            font-size: 11px;
+                            color: var(--text-muted);
+                            margin-top: 4px;
+                        "
+                    >
+                        <span
+                            >Heel:
+                            <strong id="rollAngle" style="color: #f8fafc"
+                                >12° Port</strong
+                            ></span
+                        >
+                        <span
+                            >Pitch:
+                            <strong id="pitchAngle" style="color: #f8fafc"
+                                >2°</strong
+                            ></span
+                        >
+                    </div>
+                </div>
+
+                <div
+                    class="card"
+                    id="raceCard"
+                    style="
+                        border-left: 4px solid var(--accent-yellow);
+                        width: 240px;
+                    "
+                >
+                    <div class="card-title">
+                        <span>🏁 Race Standings</span>
+                        <span
+                            id="ghostDiffText"
+                            style="
+                                font-size: 11px;
+                                font-weight: 700;
+                                color: var(--accent-green);
+                            "
+                            >+0m</span
+                        >
+                    </div>
+                    <div class="metric-row">
+                        <span
+                            class="metric-val"
+                            id="standingDisplay"
+                            style="color: var(--accent-green); font-size: 18px"
+                            >1st Place 🥇</span
+                        >
+                    </div>
+                    <div
+                        style="
+                            display: flex;
+                            justify-content: space-between;
+                            font-size: 10px;
+                            color: var(--text-muted);
+                            margin-top: 3px;
+                        "
+                    >
+                        <span
+                            >Ghost:
+                            <strong id="ghostSpd" style="color: #fb923c"
+                                >0.0 kts</strong
+                            ></span
+                        >
+                        <span>Dist: <strong id="ghostDist">220m</strong></span>
+                    </div>
+                </div>
+
+                <div class="card" style="width: 240px">
+                    <div class="card-title">Ocean Environment</div>
+                    <div class="env-badge-container">
+                        <div
+                            class="wind-badge"
+                            id="windBadge"
+                            title="True Wind: Speed and direction wind is blowing FROM."
+                        >
+                            <span style="font-size: 15px">💨</span>
+                            <div>
+                                <div
+                                    style="
+                                        font-weight: 700;
+                                        color: var(--accent-blue);
+                                        font-size: 11px;
+                                    "
+                                    id="windStatusText"
+                                >
+                                    14 KTS @ 000° (N)
+                                </div>
+                                <div
+                                    style="
+                                        font-size: 9px;
+                                        color: var(--text-muted);
+                                    "
+                                    id="windSubText"
+                                >
+                                    Blowing South (180°)
+                                </div>
+                            </div>
+                        </div>
+
+                        <div
+                            class="current-badge"
+                            id="currentBadge"
+                            title="Sea Current: Water drift direction."
+                        >
+                            <span style="font-size: 15px">🌊</span>
+                            <div>
+                                <div
+                                    style="
+                                        font-weight: 700;
+                                        color: var(--accent-teal);
+                                        font-size: 11px;
+                                    "
+                                    id="currentStatusText"
+                                >
+                                    1.8 KTS @ 090° (E)
+                                </div>
+                                <div
+                                    style="
+                                        font-size: 9px;
+                                        color: var(--text-muted);
+                                    "
+                                >
+                                    Current Drift / Set
+                                </div>
+                            </div>
+                        </div>
+
+                        <div
+                            class="waves-badge"
+                            id="wavesBadge"
+                            title="Wave Swell: Ocean wave height."
+                        >
+                            <span style="font-size: 15px">〰️</span>
+                            <div>
+                                <div
+                                    style="
+                                        font-weight: 700;
+                                        color: var(--accent-purple);
+                                        font-size: 11px;
+                                    "
+                                    id="wavesStatusText"
+                                >
+                                    1.2m Swell @ 315° (NW)
+                                </div>
+                                <div
+                                    id="wavesFrequencyText"
+                                    style="
+                                        font-size: 9px;
+                                        color: var(--text-muted);
+                                    "
+                                >
+                                    Period: 5.2s / 0.19Hz
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card instruments-grid">
+                    <div
+                        title="SOG (Speed Over Ground) / STW (Speed Through Water)"
+                    >
+                        <div class="card-title">SOG / STW</div>
+                        <div class="metric-row">
+                            <span class="metric-val" id="sogDisplay">0.0</span>
+                            <span class="metric-unit" id="stwSub">/ 0.0</span>
+                        </div>
+                    </div>
+                    <div title="HDG (Boat Heading) / COG (Course Over Ground)">
+                        <div class="card-title">HDG / COG</div>
+                        <div class="metric-row">
+                            <span class="metric-val" id="hdgDisplay">000</span>
+                            <span class="metric-unit" id="cogSub">/ 000°</span>
+                        </div>
+                    </div>
+                    <div title="Velocity Made Good (VMG) to target">
+                        <div class="card-title">VMG</div>
+                        <div
+                            class="sub-metric"
+                            id="vmgDisplay"
+                            style="color: var(--accent-green)"
+                        >
+                            0.0 kts
+                        </div>
+                    </div>
+                    <div title="Target Bearing: Direction to active buoy.">
+                        <div class="card-title">Bearing</div>
+                        <div
+                            class="sub-metric"
+                            id="targetBearing"
+                            style="color: var(--accent-yellow)"
+                        >
+                            000°
+                        </div>
+                    </div>
+                    <div
+                        title="True Wind Angle (TWA)"
+                        style="grid-column: span 2"
+                    >
+                        <div class="card-title">True Wind Angle (TWA)</div>
+                        <div
+                            class="sub-metric"
+                            id="twaDisplay"
+                            style="color: var(--accent-blue)"
+                        >
+                            45° Port
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hud-right">
+                <div class="card controls-panel">
+                    <div>
+                        <div class="card-title">Game Mode</div>
+                        <select class="select-input" id="modeSelect">
+                            <option value="endless">
+                                🌊 Endless Navigator (Currents + Shifts)
+                            </option>
+                            <option value="classic">
+                                ⛵ Regatta Training (Fixed Course)
+                            </option>
+                            <option value="comfort">
+                                🥂 Passenger Comfort Challenge
+                            </option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <div class="card-title">Ghost Competitor AI</div>
+                        <select class="select-input" id="ghostSelect">
+                            <option value="hard">
+                                🔴 Hard (Pro Racer - Perfect VMG & Tacks)
+                            </option>
+                            <option value="medium" selected>
+                                🟡 Medium (Club Sailor - Small Lags)
+                            </option>
+                            <option value="easy">
+                                🟢 Easy (Novice - Makes Mistakes & Luffs)
+                            </option>
+                            <option value="off">⚪ Off (Solo Mode)</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <div class="card-title">Wave State</div>
+                        <select class="select-input" id="waveSelect">
+                            <option value="moderate" selected>
+                                🌊 Moderate Swell (1.2m)
+                            </option>
+                            <option value="rough">⛈️ Rough Chop (2.2m)</option>
+                            <option value="calm">🏖️ Calm Seas (0.4m)</option>
+                        </select>
+                    </div>
+
+                    <button
+                        class="btn active"
+                        id="btnVariableWaves"
+                        title="Variable Waves: Slowly changes wave height and frequency around the selected sea state."
+                    >
+                        Variable Waves: ON
+                    </button>
+
+                    <button
+                        class="btn demo-btn"
+                        id="btnAutopilot"
+                        title="AI Autopilot: Takes control of YOUR boat to demonstrate optimal racing paths. Press P to toggle."
+                    >
+                        🤖 Watch AI Autopilot Demo (<span class="key-pill"
+                            >P</span
+                        >)
+                    </button>
+
+                    <div
+                        class="slider-group"
+                        title="Rudder Angle (A / D): Steer helm left/right. Release keys to center rudder at 0°."
+                    >
+                        <div class="slider-header">
+                            <span
+                                >Rudder Angle (<span class="key-pill">A</span> /
+                                <span class="key-pill">D</span>)</span
+                            >
+                            <span id="rudderVal">0°</span>
+                        </div>
+                        <input
+                            type="range"
+                            id="rudderSlider"
+                            min="-35"
+                            max="35"
+                            value="0"
+                            step="1"
+                        />
+                    </div>
+
+                    <div
+                        class="slider-group"
+                        title="Main Sheet (W / S): Controls boom trim angle."
+                    >
+                        <div class="slider-header">
+                            <span
+                                >Main Sheet (<span class="key-pill">W</span> /
+                                <span class="key-pill">S</span>)</span
+                            >
+                            <span id="sheetVal">18°</span>
+                        </div>
+                        <input
+                            type="range"
+                            id="sheetSlider"
+                            min="5"
+                            max="90"
+                            value="18"
+                            step="1"
+                        />
+                    </div>
+
+                    <div style="display: flex; gap: 6px">
+                        <button
+                            class="btn active"
+                            id="btnAutoTrim"
+                            style="flex: 1"
+                            title="Auto-Trim: Automatically maintains ideal ~15° AoA for your current heading."
+                        >
+                            Auto-Trim: ON
+                        </button>
+                        <button
+                            class="btn active"
+                            id="btnVectors"
+                            style="flex: 1"
+                            title="Toggle Force Vectors: Shows/hides arrows for Wind, Sail Force, Keel Resistance, and Net Drive."
+                        >
+                            Vectors: ON
+                        </button>
+                    </div>
+
+                    <div style="display: flex; gap: 6px">
+                        <button
+                            class="btn active"
+                            id="btnCurrents"
+                            style="flex: 1"
+                            title="Toggle Sea Currents: Turns ocean drift on/off."
+                        >
+                            Currents: ON
+                        </button>
+                        <button
+                            class="btn"
+                            id="btnTack"
+                            style="flex: 1"
+                            title="Tack (Spacebar): Turns the bow through the wind."
+                        >
+                            Tack (<span class="key-pill">Space</span>)
+                        </button>
+                    </div>
+
+                    <div style="display: flex; gap: 6px">
+                        <button
+                            class="btn"
+                            id="btnSpeed"
+                            style="flex: 1"
+                            title="Simulation Speed: 1x, 2x, or 3x speed."
+                        >
+                            Speed: 1x
+                        </button>
+                        <button
+                            class="btn"
+                            id="btnReset"
+                            style="flex: 1"
+                            title="Reset (R): Restarts race."
+                        >
+                            Reset (<span class="key-pill">R</span>)
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card" style="width: 250px">
+                    <div class="card-title">Color Legend</div>
+
+                    <div class="legend-section">
+                        <div class="legend-section-title">
+                            ⛵ Boats & Rocking
+                        </div>
+                        <div class="legend-item">
+                            <div
+                                class="legend-dot"
+                                style="
+                                    background: #ffffff;
+                                    border: 1px solid #38bdf8;
+                                "
+                            ></div>
+                            <span
+                                ><strong>White Boat:</strong> Your Sailboat
+                                (2.5D Roll)</span
+                            >
+                        </div>
+                        <div class="legend-item">
+                            <div
+                                class="legend-dot"
+                                style="background: #fb923c; opacity: 0.85"
+                            ></div>
+                            <span
+                                ><strong>Orange Ghost:</strong> Rival
+                                Competitor</span
+                            >
+                        </div>
+                    </div>
+
+                    <div class="legend-section">
+                        <div class="legend-section-title">🌊 Ocean & Waves</div>
+                        <div class="legend-item">
+                            <div
+                                class="legend-dot"
+                                style="background: rgba(255, 255, 255, 0.7)"
+                            ></div>
+                            <span
+                                ><strong>White Crests:</strong> Wave Swell</span
+                            >
+                        </div>
+                        <div class="legend-item">
+                            <div
+                                class="legend-dot"
+                                style="background: rgba(6, 182, 212, 0.8)"
+                            ></div>
+                            <span
+                                ><strong>Teal Wavelets:</strong> Sea Current
+                                Drift</span
+                            >
+                        </div>
+                        <div class="legend-item">
+                            <div
+                                class="legend-dot"
+                                style="background: rgba(56, 189, 248, 0.7)"
+                            ></div>
+                            <span
+                                ><strong>Blue Arrows:</strong> True Wind
+                                Flow</span
+                            >
+                        </div>
+                    </div>
+
+                    <div class="legend-section">
+                        <div class="legend-section-title">
+                            ⚡ Force Vectors (On Boat)
+                        </div>
+                        <div class="legend-item">
+                            <div
+                                class="legend-dot"
+                                style="background: #38bdf8"
+                            ></div>
+                            <span><strong>Cyan:</strong> Apparent Wind</span>
+                        </div>
+                        <div class="legend-item">
+                            <div
+                                class="legend-dot"
+                                style="background: #c084fc"
+                            ></div>
+                            <span
+                                ><strong>Purple:</strong> Sail Force
+                                (Heeling)</span
+                            >
+                        </div>
+                        <div class="legend-item">
+                            <div
+                                class="legend-dot"
+                                style="background: #fb923c"
+                            ></div>
+                            <span
+                                ><strong>Orange:</strong> Keel Resistance</span
+                            >
+                        </div>
+                        <div class="legend-item">
+                            <div
+                                class="legend-dot"
+                                style="background: #4ade80"
+                            ></div>
+                            <span><strong>Green:</strong> Forward Drive</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="target-hud">
+                <div>
+                    🎯 Target:
+                    <span id="targetName" style="color: var(--accent-green)"
+                        >Buoy #1</span
+                    >
+                </div>
+                <div style="color: var(--text-muted)">
+                    Distance: <span id="targetDist">220m</span>
+                </div>
+                <div style="color: var(--text-muted)">
+                    Boom:
+                    <span id="boomSide" style="color: var(--accent-blue)"
+                        >18° Port</span
+                    >
+                </div>
+                <div style="color: var(--text-muted)">
+                    Comfort:
+                    <span
+                        id="bottomComfortBadge"
+                        style="color: var(--accent-green); font-weight: 700"
+                        >Smooth 🥂</span
+                    >
+                </div>
+                <div style="color: var(--text-muted)">
+                    Mode:
+                    <span id="modeStatus" style="color: var(--accent-blue)"
+                        >Manual</span
+                    >
+                </div>
+            </div>
+        </div>
+
+        <script>
+            function setText(id, text) {
+                const el = document.getElementById(id);
+                if (el) el.textContent = text;
+            }
+            function setHTML(id, html) {
+                const el = document.getElementById(id);
+                if (el) el.innerHTML = html;
+            }
+            function setStyle(id, prop, val) {
+                const el = document.getElementById(id);
+                if (el && el.style) el.style[prop] = val;
+            }
+
+            const canvas = document.getElementById("simCanvas");
+            const ctx = canvas.getContext("2d");
+
+            function resize() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+            window.addEventListener("resize", resize);
+            resize();
+
+            const KNOTS_TO_MPS = 0.514444;
+            const MPS_TO_KNOTS = 1.94384;
+            const DEG_TO_RAD = Math.PI / 180;
+            const RAD_TO_DEG = 180 / Math.PI;
+
+            const state = {
+                mode: "endless",
+                score: 0,
+                ghostScore: 0,
+                comfortChallenge: {
+                    elapsed: 0,
+                    sickTime: 0,
+                    surviveTime: 90,
+                    sickThreshold: 65,
+                    instantLoseThreshold: 40,
+                    maxSickTime: 4,
+                    lost: false,
+                    won: false,
+                },
+
+                boat: {
+                    x: -15,
+                    y: 130,
+                    heading: -45 * DEG_TO_RAD,
+                    angularVel: 0,
+                    speedForward: 3.5 * KNOTS_TO_MPS,
+                    speedLateral: 0,
+                    rudder: 0,
+                    sheet: 18,
+                    sailFlutter: 0,
+                    length: 9.0,
+                    mass: 2500,
+                    sailArea: 28,
+
+                    rollAngle: -10,
+                    pitchAngle: 1,
+                    comfortPct: 95,
+                },
+
+                ghost: {
+                    enabled: true,
+                    difficulty: "medium",
+                    x: 25,
+                    y: 130,
+                    heading: -45 * DEG_TO_RAD,
+                    angularVel: 0,
+                    speedForward: 3.5 * KNOTS_TO_MPS,
+                    speedLateral: 0,
+                    rudder: 0,
+                    sheet: 18,
+                    sailFlutter: 0,
+                    length: 9.0,
+                    mass: 2500,
+                    sailArea: 28,
+                    aiTackState: 0,
+                    mistakeTimer: 0,
+                    rollAngle: -10,
+                    pitchAngle: 1,
+                    wake: [],
+                },
+
+                wind: {
+                    speed: 14.0,
+                    dir: 0 * DEG_TO_RAD,
+                    baseDir: 0 * DEG_TO_RAD,
+                    targetDir: 0 * DEG_TO_RAD,
+                    shiftTimer: 18.0,
+                },
+                current: {
+                    enabled: true,
+                    speed: 1.8,
+                    dir: 90 * DEG_TO_RAD,
+                },
+                waves: {
+                    enabled: true,
+                    height: 1.2,
+                    baseHeight: 1.2,
+                    period: 5.2,
+                    basePeriod: 5.2,
+                    dir: 315 * DEG_TO_RAD,
+                    phase: 0,
+                    variabilityPhase: 0,
+                },
+                target: {
+                    name: "Buoy #1",
+                    x: 0,
+                    y: -160,
+                    radius: 25,
+                    color: "#4ade80",
+                },
+                waypoints: [
+                    {
+                        name: "Upwind Buoy (North)",
+                        x: 0,
+                        y: -160,
+                        radius: 25,
+                        color: "#4ade80",
+                    },
+                    {
+                        name: "Downwind Buoy (South)",
+                        x: 0,
+                        y: 160,
+                        radius: 25,
+                        color: "#f59e0b",
+                    },
+                ],
+                currentWaypointIdx: 0,
+                ghostWaypointIdx: 0,
+                autoTrim: true,
+                showVectors: true,
+                simSpeed: 1.0,
+                camera: { scale: 1.85 },
+                wake: [],
+                windParticles: [],
+                currentParticles: [],
+                keys: {},
+                lastTime: performance.now(),
+                simTime: 0,
+                tackTargetHeading: null,
+
+                isAutopilot: false,
+                aiTackState: 0,
+                windShiftMessage: "",
+            };
+
+            for (let i = 0; i < 70; i++) {
+                state.windParticles.push({
+                    x: (Math.random() - 0.5) * 900,
+                    y: (Math.random() - 0.5) * 900,
+                    speed: 120 + Math.random() * 60,
+                    length: 26 + Math.random() * 14,
+                });
+            }
+
+            for (let i = 0; i < 45; i++) {
+                state.currentParticles.push({
+                    x: (Math.random() - 0.5) * 900,
+                    y: (Math.random() - 0.5) * 900,
+                    phase: Math.random() * Math.PI * 2,
+                    speed: 40 + Math.random() * 20,
+                });
+            }
+
+            function normalizeAngle(rad) {
+                while (rad > Math.PI) rad -= 2 * Math.PI;
+                while (rad < -Math.PI) rad += 2 * Math.PI;
+                return rad;
+            }
+
+            function spawnNextTarget(whoWon) {
+                state.score++;
+                const b = state.boat;
+                const w = state.wind;
+
+                const isUpwindChallenge = Math.random() < 0.65;
+                let targetAngleFromBoat;
+
+                if (isUpwindChallenge) {
+                    targetAngleFromBoat =
+                        w.dir + (Math.random() - 0.5) * 60 * DEG_TO_RAD;
+                } else {
+                    targetAngleFromBoat =
+                        w.dir +
+                        Math.PI +
+                        (Math.random() - 0.5) * 90 * DEG_TO_RAD;
+                }
+
+                const distance = 180 + Math.random() * 120;
+                const targetX = b.x + Math.sin(targetAngleFromBoat) * distance;
+                const targetY = b.y - Math.cos(targetAngleFromBoat) * distance;
+
+                state.target = {
+                    name: `Buoy #${state.score + 1}`,
+                    x: targetX,
+                    y: targetY,
+                    radius: 25,
+                    color: isUpwindChallenge ? "#4ade80" : "#f59e0b",
+                };
+
+                if (whoWon === "player") {
+                    state.windShiftMessage = `🏆 YOU WON BUOY #${state.score}! Next: ${state.target.name}`;
+                } else {
+                    state.windShiftMessage = `⚠️ GHOST RACER WON BUOY #${state.score}! Catch up to ${state.target.name}!`;
+                }
+            }
+
+            function updateDynamicWaves(dt) {
+                const waves = state.waves;
+                if (!waves.enabled) {
+                    waves.height = waves.baseHeight;
+                    waves.period = waves.basePeriod;
+                    return;
+                }
+
+                waves.variabilityPhase += dt * state.simSpeed * 0.08;
+                const heightFactor =
+                    1 +
+                    Math.sin(waves.variabilityPhase) * 0.22 +
+                    Math.sin(waves.variabilityPhase * 2.7 + 1.4) * 0.08;
+                const periodFactor =
+                    1 + Math.sin(waves.variabilityPhase * 0.73 + 2.1) * 0.18;
+
+                waves.height = Math.max(0.2, waves.baseHeight * heightFactor);
+                waves.period = Math.max(2.8, waves.basePeriod * periodFactor);
+            }
+
+            function updateComfortChallenge(dt) {
+                const challenge = state.comfortChallenge;
+                if (state.mode !== "comfort" || challenge.lost || challenge.won)
+                    return;
+
+                const scaledDt = dt * state.simSpeed;
+                challenge.elapsed += scaledDt;
+
+                if (state.boat.comfortPct < challenge.sickThreshold) {
+                    challenge.sickTime += scaledDt * 1.9;
+                } else {
+                    challenge.sickTime = Math.max(
+                        0,
+                        challenge.sickTime - scaledDt * 0.9,
+                    );
+                }
+
+                if (
+                    state.boat.comfortPct <= challenge.instantLoseThreshold ||
+                    challenge.sickTime >= challenge.maxSickTime
+                ) {
+                    challenge.lost = true;
+                    state.windShiftMessage =
+                        "🤢 FRIENDS ARE SEASICK — CHALLENGE LOST. Reset and keep the boat smoother through the chop.";
+                } else if (challenge.elapsed >= challenge.surviveTime) {
+                    challenge.won = true;
+                    state.windShiftMessage =
+                        "🥂 FRIENDS MADE IT COMFORTABLY — CHALLENGE WON!";
+                }
+            }
+
+            function updateDynamicWind(dt) {
+                if (state.mode !== "endless") return;
+                const w = state.wind;
+
+                w.shiftTimer -= dt * state.simSpeed;
+                if (w.shiftTimer <= 0) {
+                    const shiftDelta = (Math.random() - 0.5) * 70 * DEG_TO_RAD;
+                    w.targetDir = normalizeAngle(w.baseDir + shiftDelta);
+                    w.speed = 11.0 + Math.random() * 7.0;
+                    w.shiftTimer = 16.0 + Math.random() * 12.0;
+
+                    const degShift = Math.round(w.targetDir * RAD_TO_DEG);
+                    state.windShiftMessage = `💨 WIND SHIFT: Wind shifting to ${(degShift + 360) % 360}° at ${Math.round(w.speed)} kts!`;
+                }
+
+                let dirDiff = normalizeAngle(w.targetDir - w.dir);
+                w.dir = normalizeAngle(
+                    w.dir + dirDiff * Math.min(1.0, dt * 0.4 * state.simSpeed),
+                );
+            }
+
+            function updateAutopilot(dt) {
+                if (!state.isAutopilot) return;
+                const b = state.boat;
+                const w = state.wind;
+                const target =
+                    state.mode === "endless"
+                        ? state.target
+                        : state.waypoints[state.currentWaypointIdx];
+
+                const dx = target.x - b.x;
+                const dy = target.y - b.y;
+                const targetBearing = Math.atan2(dx, -dy);
+                const angleToWind = normalizeAngle(targetBearing - w.dir);
+
+                let targetHdg;
+                if (Math.abs(angleToWind) < 42 * DEG_TO_RAD) {
+                    if (state.aiTackState === 0) {
+                        targetHdg = normalizeAngle(w.dir - 45 * DEG_TO_RAD);
+                        const perpDist =
+                            (b.x - target.x) * Math.cos(w.dir) +
+                            (b.y - target.y) * Math.sin(w.dir);
+                        if (perpDist < -55) state.aiTackState = 1;
+                    } else {
+                        targetHdg = normalizeAngle(w.dir + 45 * DEG_TO_RAD);
+                        const perpDist =
+                            (b.x - target.x) * Math.cos(w.dir) +
+                            (b.y - target.y) * Math.sin(w.dir);
+                        if (perpDist > 55) state.aiTackState = 0;
+                    }
+                } else {
+                    targetHdg = targetBearing;
+                }
+
+                let diff = normalizeAngle(targetHdg - b.heading);
+                b.rudder = Math.max(-30, Math.min(30, diff * RAD_TO_DEG * 1.5));
+            }
+
+            function updateGhostAI(dt) {
+                const g = state.ghost;
+                if (!g.enabled || g.difficulty === "off") return;
+                const w = state.wind;
+                const target =
+                    state.mode === "endless"
+                        ? state.target
+                        : state.waypoints[state.ghostWaypointIdx];
+
+                const dx = target.x - g.x;
+                const dy = target.y - g.y;
+                const targetBearing = Math.atan2(dx, -dy);
+                const angleToWind = normalizeAngle(targetBearing - w.dir);
+
+                let targetHdg;
+                g.mistakeTimer += dt;
+
+                if (Math.abs(angleToWind) < 42 * DEG_TO_RAD) {
+                    let optimalTackAngle = 45 * DEG_TO_RAD;
+                    let laylineBoundary = 55;
+
+                    if (g.difficulty === "hard") {
+                        optimalTackAngle = 44 * DEG_TO_RAD;
+                        laylineBoundary = 50;
+                    } else if (g.difficulty === "medium") {
+                        optimalTackAngle = 50 * DEG_TO_RAD;
+                        laylineBoundary = 65;
+                    } else if (g.difficulty === "easy") {
+                        optimalTackAngle =
+                            58 * DEG_TO_RAD +
+                            Math.sin(g.mistakeTimer * 0.5) * 8 * DEG_TO_RAD;
+                        laylineBoundary = 75;
+                    }
+
+                    if (g.aiTackState === 0) {
+                        targetHdg = normalizeAngle(w.dir - optimalTackAngle);
+                        const perpDist =
+                            (g.x - target.x) * Math.cos(w.dir) +
+                            (g.y - target.y) * Math.sin(w.dir);
+                        if (perpDist < -laylineBoundary) g.aiTackState = 1;
+                    } else {
+                        targetHdg = normalizeAngle(w.dir + optimalTackAngle);
+                        const perpDist =
+                            (g.x - target.x) * Math.cos(w.dir) +
+                            (g.y - target.y) * Math.sin(w.dir);
+                        if (perpDist > laylineBoundary) g.aiTackState = 0;
+                    }
+                } else {
+                    targetHdg = targetBearing;
+                    if (g.difficulty === "easy") {
+                        targetHdg +=
+                            Math.sin(g.mistakeTimer * 0.8) * 12 * DEG_TO_RAD;
+                    }
+                }
+
+                let diff = normalizeAngle(targetHdg - g.heading);
+                g.rudder = Math.max(-30, Math.min(30, diff * RAD_TO_DEG * 1.5));
+            }
+
+            function simulateBoatPhysics(b, dt, isGhost = false) {
+                const w = state.wind;
+                const cur = state.current;
+                const waves = state.waves;
+
+                const steerEffect = (Math.max(1.0, b.speedForward) / 4.0) * 0.8;
+                const targetAngularVel =
+                    Math.sin(b.rudder * DEG_TO_RAD) * steerEffect * 1.6;
+                b.angularVel +=
+                    (targetAngularVel - b.angularVel) *
+                    Math.min(1.0, dt * 5.0 * state.simSpeed);
+                b.heading = normalizeAngle(
+                    b.heading + b.angularVel * dt * state.simSpeed,
+                );
+
+                const forwardX = Math.sin(b.heading),
+                    forwardY = -Math.cos(b.heading);
+                const rightX = Math.cos(b.heading),
+                    rightY = Math.sin(b.heading);
+
+                const currentSpeedMps =
+                    (cur.enabled ? cur.speed : 0) * KNOTS_TO_MPS;
+                const curFlowX = Math.sin(cur.dir) * currentSpeedMps;
+                const curFlowY = -Math.cos(cur.dir) * currentSpeedMps;
+
+                const trueWindSpeedMps = w.speed * KNOTS_TO_MPS;
+                const trueWindFlowX = -Math.sin(w.dir) * trueWindSpeedMps;
+                const trueWindFlowY = Math.cos(w.dir) * trueWindSpeedMps;
+
+                const vWaterX =
+                    forwardX * b.speedForward + rightX * b.speedLateral;
+                const vWaterY =
+                    forwardY * b.speedForward + rightY * b.speedLateral;
+
+                const vGroundX = vWaterX + curFlowX;
+                const vGroundY = vWaterY + curFlowY;
+
+                const appFlowX = trueWindFlowX - vGroundX;
+                const appFlowY = trueWindFlowY - vGroundY;
+                const appWindSpeedMps = Math.hypot(appFlowX, appFlowY) || 0.001;
+
+                const appLocalFwd = -(
+                    appFlowX * forwardX +
+                    appFlowY * forwardY
+                );
+                const appLocalRight = -(appFlowX * rightX + appFlowY * rightY);
+                const awaDeg =
+                    Math.atan2(appLocalRight, appLocalFwd) * RAD_TO_DEG;
+                const twaDeg =
+                    Math.atan2(
+                        -(trueWindFlowX * rightX + trueWindFlowY * rightY),
+                        -(trueWindFlowX * forwardX + trueWindFlowY * forwardY),
+                    ) * RAD_TO_DEG;
+
+                let idealSheet = 18;
+                if (Math.abs(twaDeg) < 55) {
+                    if (Math.abs(awaDeg) < 22) idealSheet = 8;
+                    else
+                        idealSheet = Math.max(
+                            8,
+                            Math.min(85, Math.abs(awaDeg) - 14),
+                        );
+                } else {
+                    idealSheet = Math.max(
+                        20,
+                        Math.min(85, Math.abs(awaDeg) - 10),
+                    );
+                }
+
+                if (!isGhost && (state.autoTrim || state.isAutopilot)) {
+                    b.sheet = idealSheet;
+                    const sheetSliderEl =
+                        document.getElementById("sheetSlider");
+                    if (sheetSliderEl) sheetSliderEl.value = b.sheet;
+                    setText("sheetVal", `${Math.round(b.sheet)}°`);
+                } else if (isGhost) {
+                    if (b.difficulty === "hard") b.sheet = idealSheet;
+                    else if (b.difficulty === "medium")
+                        b.sheet = idealSheet + 3;
+                    else
+                        b.sheet = idealSheet + 8 + Math.sin(b.mistakeTimer) * 6;
+                }
+
+                const aoaDeg = Math.abs(awaDeg) - b.sheet;
+                const aoaRad = aoaDeg * DEG_TO_RAD;
+
+                let cl = 0,
+                    cd = 0.08,
+                    isLuffing = false;
+                if (Math.abs(awaDeg) < 20 || aoaDeg <= 0) {
+                    isLuffing = true;
+                    cl = 0.05;
+                    cd = 0.12;
+                    b.sailFlutter = (Math.random() - 0.5) * 8.0;
+                } else if (aoaDeg < 22) {
+                    cl = 1.65 * Math.sin(2 * aoaRad);
+                    cd = 0.12 + 1.1 * Math.pow(Math.sin(aoaRad), 2);
+                    b.sailFlutter *= 0.8;
+                } else {
+                    cl = 1.2 * Math.sin(2 * aoaRad) * Math.cos(aoaRad);
+                    cd = 0.25 + 1.35 * Math.sin(aoaRad);
+                    b.sailFlutter *= 0.8;
+                }
+
+                let powerMult = 1.0;
+                if (isGhost) {
+                    if (b.difficulty === "hard") powerMult = 1.0;
+                    else if (b.difficulty === "medium") powerMult = 0.9;
+                    else powerMult = 0.75;
+                }
+
+                const q =
+                    0.5 *
+                    1.225 *
+                    Math.pow(appWindSpeedMps, 2) *
+                    b.sailArea *
+                    powerMult;
+                const liftMag = q * Math.max(0, cl),
+                    dragMag = q * cd;
+
+                const flowLocalFwd = -appLocalFwd / appWindSpeedMps;
+                const flowLocalRight = -appLocalRight / appWindSpeedMps;
+
+                let liftLocalRight = awaDeg >= 0 ? flowLocalFwd : -flowLocalFwd;
+                let liftLocalFwd =
+                    awaDeg >= 0 ? -flowLocalRight : flowLocalRight;
+
+                const fSailForward =
+                    liftMag * liftLocalFwd + dragMag * flowLocalFwd;
+                const fSailLateral =
+                    liftMag * liftLocalRight + dragMag * flowLocalRight;
+
+                const keelLateralReaction =
+                    -fSailLateral * 0.94 - b.speedLateral * 3200;
+                const netLateralForce = fSailLateral + keelLateralReaction;
+
+                const speedFwd = Math.max(0, b.speedForward);
+                const hullDrag =
+                    45 * speedFwd +
+                    28 * Math.pow(speedFwd, 2) +
+                    5.0 * Math.pow(speedFwd, 4);
+                const netForwardForce = fSailForward - hullDrag;
+
+                b.speedForward = Math.max(
+                    -0.5,
+                    b.speedForward +
+                        (netForwardForce / b.mass) * dt * state.simSpeed,
+                );
+                b.speedLateral +=
+                    (netLateralForce / b.mass) * dt * state.simSpeed;
+
+                b.x += vGroundX * dt * state.simSpeed;
+                b.y += vGroundY * dt * state.simSpeed;
+
+                if (isNaN(b.x)) b.x = 0;
+                if (isNaN(b.y)) b.y = 130;
+                if (isNaN(b.speedForward)) b.speedForward = 2.0;
+
+                const steadyHeel = (fSailLateral / 1100.0) * 14.0;
+                const relWaveAngle = normalizeAngle(b.heading - waves.dir);
+                const beamWaveFactor = Math.abs(Math.sin(relWaveAngle));
+                const headWaveFactor = Math.cos(relWaveAngle);
+
+                const rollOscillation =
+                    waves.height *
+                    5.5 *
+                    beamWaveFactor *
+                    Math.sin((2 * Math.PI * state.simTime) / waves.period);
+                const pitchOscillation =
+                    waves.height *
+                    3.5 *
+                    Math.abs(headWaveFactor) *
+                    Math.sin(
+                        (2 * Math.PI * state.simTime) / waves.period +
+                            Math.PI / 4,
+                    );
+
+                b.rollAngle = steadyHeel + rollOscillation;
+                b.pitchAngle = pitchOscillation;
+
+                const rollDiscomfort = Math.abs(rollOscillation) * 4.5;
+                const pitchDiscomfort =
+                    Math.abs(pitchOscillation) * (speedFwd / 4.0) * 4.0;
+                const heelDiscomfort =
+                    Math.max(0, Math.abs(steadyHeel) - 16.0) * 2.5;
+                const rudderJerk = Math.abs(b.angularVel) * 15.0;
+
+                const totalDiscomfort =
+                    rollDiscomfort +
+                    pitchDiscomfort +
+                    heelDiscomfort +
+                    rudderJerk;
+                b.comfortPct = Math.max(
+                    10,
+                    Math.min(100, 100.0 - totalDiscomfort),
+                );
+
+                return {
+                    vGroundX,
+                    vGroundY,
+                    awaDeg,
+                    twaDeg,
+                    aoaDeg,
+                    idealSheet,
+                    isLuffing,
+                    sogKnots: Math.hypot(vGroundX, vGroundY) * MPS_TO_KNOTS,
+                    stwKnots: Math.hypot(vWaterX, vWaterY) * MPS_TO_KNOTS,
+                    cogDeg:
+                        (Math.atan2(vGroundX, -vGroundY) * RAD_TO_DEG + 360) %
+                        360,
+                    appWindSpeedKnots: appWindSpeedMps * MPS_TO_KNOTS,
+                    sailForceX: fSailForward * forwardX + fSailLateral * rightX,
+                    sailForceY: fSailForward * forwardY + fSailLateral * rightY,
+                    keelForceX: rightX * keelLateralReaction,
+                    keelForceY: rightY * keelLateralReaction,
+                    netThrustX: forwardX * Math.max(0, fSailForward),
+                    netThrustY: forwardY * Math.max(0, fSailForward),
+                    appFlowX,
+                    appFlowY,
+                };
+            }
+
+            function updatePhysics(dt) {
+                state.simTime += dt * state.simSpeed;
+                const b = state.boat;
+                const g = state.ghost;
+                const w = state.wind;
+                const cur = state.current;
+                const waves = state.waves;
+
+                updateDynamicWaves(dt);
+                waves.phase +=
+                    (dt * state.simSpeed * 2 * Math.PI) / waves.period;
+
+                updateDynamicWind(dt);
+                updateAutopilot(dt);
+                updateGhostAI(dt);
+
+                const trueWindSpeedMps = w.speed * KNOTS_TO_MPS;
+                const windFlowNormX = -Math.sin(w.dir);
+                const windFlowNormY = Math.cos(w.dir);
+                state.windParticles.forEach((p) => {
+                    p.x += windFlowNormX * p.speed * dt * state.simSpeed;
+                    p.y += windFlowNormY * p.speed * dt * state.simSpeed;
+                    if (Math.hypot(p.x - b.x, p.y - b.y) > 500) {
+                        p.x =
+                            b.x -
+                            windFlowNormX * 450 +
+                            (Math.random() - 0.5) * 400;
+                        p.y =
+                            b.y -
+                            windFlowNormY * 450 +
+                            (Math.random() - 0.5) * 400;
+                    }
+                });
+
+                if (cur.enabled) {
+                    const curNormX = Math.sin(cur.dir);
+                    const curNormY = -Math.cos(cur.dir);
+                    state.currentParticles.forEach((p) => {
+                        p.x += curNormX * p.speed * dt * state.simSpeed;
+                        p.y += curNormY * p.speed * dt * state.simSpeed;
+                        p.phase += dt * 3.0;
+                        if (Math.hypot(p.x - b.x, p.y - b.y) > 500) {
+                            p.x =
+                                b.x -
+                                curNormX * 450 +
+                                (Math.random() - 0.5) * 400;
+                            p.y =
+                                b.y -
+                                curNormY * 450 +
+                                (Math.random() - 0.5) * 400;
+                        }
+                    });
+                }
+
+                if (state.tackTargetHeading !== null) {
+                    let diff = normalizeAngle(
+                        state.tackTargetHeading - b.heading,
+                    );
+                    if (Math.abs(diff) < 0.04) {
+                        state.tackTargetHeading = null;
+                        b.rudder = 0;
+                    } else {
+                        b.rudder = Math.sign(diff) * 28;
+                    }
+                }
+
+                const playerDiag = simulateBoatPhysics(b, dt, false);
+                updateComfortChallenge(dt);
+                state.diagnostics = playerDiag;
+                state.sogKnots = playerDiag.sogKnots;
+                state.stwKnots = playerDiag.stwKnots;
+                state.cogDeg = playerDiag.cogDeg;
+
+                let ghostDiag = null;
+                if (g.enabled && g.difficulty !== "off") {
+                    ghostDiag = simulateBoatPhysics(g, dt, true);
+                    g.sogKnots = ghostDiag.sogKnots;
+                }
+
+                const activeTarget =
+                    state.mode === "endless"
+                        ? state.target
+                        : state.waypoints[state.currentWaypointIdx];
+                const toTargetX = activeTarget.x - b.x,
+                    toTargetY = activeTarget.y - b.y;
+                const dist = Math.hypot(toTargetX, toTargetY) || 1;
+                state.distToTarget = dist;
+                state.targetBearingDeg =
+                    (Math.atan2(toTargetX, -toTargetY) * RAD_TO_DEG + 360) %
+                    360;
+                state.vmgKnots =
+                    (playerDiag.vGroundX * (toTargetX / dist) +
+                        playerDiag.vGroundY * (toTargetY / dist)) *
+                    MPS_TO_KNOTS;
+
+                const ghostTarget =
+                    state.mode === "endless"
+                        ? state.target
+                        : state.waypoints[state.ghostWaypointIdx];
+                const ghostToTargetX = ghostTarget.x - g.x,
+                    ghostToTargetY = ghostTarget.y - g.y;
+                const ghostDist =
+                    Math.hypot(ghostToTargetX, ghostToTargetY) || 1;
+                g.distToTarget = ghostDist;
+
+                if (dist < activeTarget.radius) {
+                    if (state.mode === "endless") spawnNextTarget("player");
+                    else {
+                        state.score++;
+                        state.currentWaypointIdx =
+                            (state.currentWaypointIdx + 1) %
+                            state.waypoints.length;
+                        if (state.currentWaypointIdx === 0 && state.isAutopilot)
+                            state.aiTackState = 0;
+                    }
+                }
+
+                if (
+                    g.enabled &&
+                    g.difficulty !== "off" &&
+                    ghostDist < ghostTarget.radius
+                ) {
+                    if (state.mode === "endless") spawnNextTarget("ghost");
+                    else {
+                        state.ghostScore++;
+                        state.ghostWaypointIdx =
+                            (state.ghostWaypointIdx + 1) %
+                            state.waypoints.length;
+                        if (state.ghostWaypointIdx === 0) g.aiTackState = 0;
+                    }
+                }
+
+                if (Math.hypot(b.speedForward, b.speedLateral) > 0.3) {
+                    if (
+                        !state.wake.length ||
+                        Math.hypot(
+                            b.x - state.wake[state.wake.length - 1].x,
+                            b.y - state.wake[state.wake.length - 1].y,
+                        ) > 2.5
+                    ) {
+                        state.wake.push({ x: b.x, y: b.y });
+                        if (state.wake.length > 300) state.wake.shift();
+                    }
+                }
+                if (
+                    g.enabled &&
+                    g.difficulty !== "off" &&
+                    Math.hypot(g.speedForward, g.speedLateral) > 0.3
+                ) {
+                    if (
+                        !g.wake.length ||
+                        Math.hypot(
+                            g.x - g.wake[g.wake.length - 1].x,
+                            g.y - g.wake[g.wake.length - 1].y,
+                        ) > 2.5
+                    ) {
+                        g.wake.push({ x: g.x, y: g.y });
+                        if (g.wake.length > 300) g.wake.shift();
+                    }
+                }
+            }
+
+            // User Input Listeners
+            window.addEventListener("keydown", (e) => {
+                if (
+                    [
+                        "arrowup",
+                        "arrowdown",
+                        "arrowleft",
+                        "arrowright",
+                        " ",
+                    ].includes(e.key.toLowerCase())
+                ) {
+                    e.preventDefault();
+                }
+                state.keys[e.key.toLowerCase()] = true;
+                if (e.key === " ") {
+                    tackBoat();
+                }
+                if (e.key.toLowerCase() === "t") toggleAutoTrim();
+                if (e.key.toLowerCase() === "p") toggleAutopilot();
+                if (e.key.toLowerCase() === "c") toggleCurrents();
+                if (e.key.toLowerCase() === "m") toggleVariableWaves();
+                if (e.key.toLowerCase() === "v") {
+                    state.showVectors = !state.showVectors;
+                    const btnVec = document.getElementById("btnVectors");
+                    if (btnVec) {
+                        btnVec.classList.toggle("active", state.showVectors);
+                        btnVec.textContent = `Vectors: ${state.showVectors ? "ON" : "OFF"}`;
+                    }
+                }
+                if (e.key.toLowerCase() === "r") resetSim();
+            });
+
+            window.addEventListener("keyup", (e) => {
+                state.keys[e.key.toLowerCase()] = false;
+            });
+
+            let isSteeringLeft = false;
+            let isSteeringRight = false;
+
+            const btnSteerLeft = document.getElementById("btnSteerLeft");
+            const btnSteerRight = document.getElementById("btnSteerRight");
+
+            if (btnSteerLeft) {
+                btnSteerLeft.addEventListener("mousedown", () => {
+                    isSteeringLeft = true;
+                });
+                btnSteerLeft.addEventListener("mouseup", () => {
+                    isSteeringLeft = false;
+                });
+                btnSteerLeft.addEventListener("mouseleave", () => {
+                    isSteeringLeft = false;
+                });
+                btnSteerLeft.addEventListener("touchstart", (e) => {
+                    e.preventDefault();
+                    isSteeringLeft = true;
+                });
+                btnSteerLeft.addEventListener("touchend", (e) => {
+                    e.preventDefault();
+                    isSteeringLeft = false;
+                });
+            }
+
+            if (btnSteerRight) {
+                btnSteerRight.addEventListener("mousedown", () => {
+                    isSteeringRight = true;
+                });
+                btnSteerRight.addEventListener("mouseup", () => {
+                    isSteeringRight = false;
+                });
+                btnSteerRight.addEventListener("mouseleave", () => {
+                    isSteeringRight = false;
+                });
+                btnSteerRight.addEventListener("touchstart", (e) => {
+                    e.preventDefault();
+                    isSteeringRight = true;
+                });
+                btnSteerRight.addEventListener("touchend", (e) => {
+                    e.preventDefault();
+                    isSteeringRight = false;
+                });
+            }
+
+            function handleInputs(dt) {
+                if (state.isAutopilot) return;
+                const b = state.boat;
+                if (state.tackTargetHeading === null) {
+                    if (
+                        state.keys["a"] ||
+                        state.keys["arrowleft"] ||
+                        isSteeringLeft
+                    ) {
+                        b.rudder = Math.max(
+                            -35,
+                            b.rudder - 45 * dt * state.simSpeed,
+                        );
+                    } else if (
+                        state.keys["d"] ||
+                        state.keys["arrowright"] ||
+                        isSteeringRight
+                    ) {
+                        b.rudder = Math.min(
+                            35,
+                            b.rudder + 45 * dt * state.simSpeed,
+                        );
+                    } else {
+                        b.rudder *= Math.max(
+                            0,
+                            1.0 - 6.0 * dt * state.simSpeed,
+                        );
+                    }
+                }
+
+                if (!state.autoTrim) {
+                    if (state.keys["w"] || state.keys["arrowup"])
+                        b.sheet = Math.max(
+                            5,
+                            b.sheet - 30 * dt * state.simSpeed,
+                        );
+                    if (state.keys["s"] || state.keys["arrowdown"])
+                        b.sheet = Math.min(
+                            90,
+                            b.sheet + 30 * dt * state.simSpeed,
+                        );
+                }
+
+                const rudderSliderEl = document.getElementById("rudderSlider");
+                if (rudderSliderEl) rudderSliderEl.value = b.rudder;
+                setText("rudderVal", `${Math.round(b.rudder)}°`);
+
+                const sheetSliderEl = document.getElementById("sheetSlider");
+                if (sheetSliderEl) sheetSliderEl.value = b.sheet;
+                setText("sheetVal", `${Math.round(b.sheet)}°`);
+            }
+
+            function tackBoat() {
+                const twa = normalizeAngle(state.boat.heading - state.wind.dir);
+                state.tackTargetHeading = normalizeAngle(
+                    state.wind.dir - Math.sign(twa || 1) * (45 * DEG_TO_RAD),
+                );
+            }
+
+            function toggleAutoTrim() {
+                state.autoTrim = !state.autoTrim;
+                const btn = document.getElementById("btnAutoTrim");
+                if (btn) {
+                    btn.classList.toggle("active", state.autoTrim);
+                    btn.textContent = `Auto-Trim: ${state.autoTrim ? "ON" : "OFF"}`;
+                }
+            }
+
+            function toggleVariableWaves() {
+                state.waves.enabled = !state.waves.enabled;
+                if (!state.waves.enabled) {
+                    state.waves.height = state.waves.baseHeight;
+                    state.waves.period = state.waves.basePeriod;
+                }
+
+                const btn = document.getElementById("btnVariableWaves");
+                if (btn) {
+                    btn.classList.toggle("active", state.waves.enabled);
+                    btn.textContent = `Variable Waves: ${state.waves.enabled ? "ON" : "OFF"}`;
+                }
+            }
+
+            function toggleCurrents() {
+                state.current.enabled = !state.current.enabled;
+                const btn = document.getElementById("btnCurrents");
+                if (btn) {
+                    btn.classList.toggle("active", state.current.enabled);
+                    btn.textContent = `Currents: ${state.current.enabled ? "ON" : "OFF"}`;
+                }
+                setStyle(
+                    "currentBadge",
+                    "opacity",
+                    state.current.enabled ? "1.0" : "0.4",
+                );
+            }
+
+            function toggleAutopilot() {
+                state.isAutopilot = !state.isAutopilot;
+                const btn = document.getElementById("btnAutopilot");
+                if (state.isAutopilot) {
+                    if (btn) {
+                        btn.textContent = "⏹️ Stop AI Demo (Take Control)";
+                        btn.classList.add("running");
+                    }
+                    setText("modeStatus", "🤖 AI Autopilot Demo");
+                    setStyle("modeStatus", "color", "var(--accent-green)");
+                    state.aiTackState = 0;
+                } else {
+                    if (btn) {
+                        btn.textContent = "🤖 Watch AI Autopilot Demo (P)";
+                        btn.classList.remove("running");
+                    }
+                    setText("modeStatus", "Manual (Assisted)");
+                    setStyle("modeStatus", "color", "var(--accent-blue)");
+                    state.boat.rudder = 0;
+                    state.tackTargetHeading = null;
+                }
+            }
+
+            function resetComfortChallenge() {
+                const challenge = state.comfortChallenge;
+                challenge.elapsed = 0;
+                challenge.sickTime = 0;
+                challenge.lost = false;
+                challenge.won = false;
+                setStyle("comfortLossOverlay", "display", "none");
+
+                if (state.mode === "comfort") {
+                    state.waves.enabled = true;
+                    state.waves.baseHeight = 2.0;
+                    state.waves.basePeriod = 4.1;
+                    state.waves.variabilityPhase = 0;
+                    updateDynamicWaves(0);
+                    const btn = document.getElementById("btnVariableWaves");
+                    if (btn) {
+                        btn.classList.add("active");
+                        btn.textContent = "Variable Waves: ON";
+                    }
+                    state.windShiftMessage =
+                        "🥂 Keep your friends comfortable: survive 90 seconds of chop without letting comfort stay low.";
+                }
+            }
+
+            function resetSim() {
+                state.boat.x = -15;
+                state.boat.y = 130;
+                state.boat.heading = -45 * DEG_TO_RAD;
+                state.boat.speedForward = 3.5 * KNOTS_TO_MPS;
+                state.boat.speedLateral = 0;
+                state.boat.angularVel = 0;
+                state.boat.rudder = 0;
+                state.wake = [];
+                state.currentWaypointIdx = 0;
+                state.ghostWaypointIdx = 0;
+                state.tackTargetHeading = null;
+                state.aiTackState = 0;
+                state.score = 0;
+                state.ghostScore = 0;
+                state.wind.dir = 0;
+                state.wind.targetDir = 0;
+                state.windShiftMessage = "";
+                resetComfortChallenge();
+                state.target = {
+                    name: "Buoy #1",
+                    x: 0,
+                    y: -160,
+                    radius: 25,
+                    color: "#4ade80",
+                };
+
+                state.ghost.x = 25;
+                state.ghost.y = 130;
+                state.ghost.heading = -45 * DEG_TO_RAD;
+                state.ghost.speedForward = 3.5 * KNOTS_TO_MPS;
+                state.ghost.speedLateral = 0;
+                state.ghost.rudder = 0;
+                state.ghost.aiTackState = 0;
+                state.ghost.wake = [];
+            }
+
+            const modeSelectEl = document.getElementById("modeSelect");
+            if (modeSelectEl) {
+                modeSelectEl.addEventListener("change", (e) => {
+                    state.mode = e.target.value;
+                    e.target.blur();
+                    resetSim();
+                });
+            }
+
+            const ghostSelectEl = document.getElementById("ghostSelect");
+            if (ghostSelectEl) {
+                ghostSelectEl.addEventListener("change", (e) => {
+                    state.ghost.difficulty = e.target.value;
+                    state.ghost.enabled = e.target.value !== "off";
+                    e.target.blur();
+                    setStyle(
+                        "raceCard",
+                        "display",
+                        state.ghost.enabled ? "block" : "none",
+                    );
+                });
+            }
+
+            const waveSelectEl = document.getElementById("waveSelect");
+            if (waveSelectEl) {
+                waveSelectEl.addEventListener("change", (e) => {
+                    const val = e.target.value;
+                    e.target.blur();
+                    if (val === "moderate") {
+                        state.waves.baseHeight = 1.2;
+                        state.waves.basePeriod = 5.2;
+                    } else if (val === "rough") {
+                        state.waves.baseHeight = 2.2;
+                        state.waves.basePeriod = 4.2;
+                    } else {
+                        state.waves.baseHeight = 0.4;
+                        state.waves.basePeriod = 6.5;
+                    }
+                    updateDynamicWaves(0);
+                });
+            }
+
+            const rudderSlider = document.getElementById("rudderSlider");
+            if (rudderSlider) {
+                rudderSlider.addEventListener("input", (e) => {
+                    if (state.isAutopilot) toggleAutopilot();
+                    state.boat.rudder = parseFloat(e.target.value);
+                    state.tackTargetHeading = null;
+                });
+            }
+
+            const sheetSlider = document.getElementById("sheetSlider");
+            if (sheetSlider) {
+                sheetSlider.addEventListener("input", (e) => {
+                    if (state.isAutopilot) toggleAutopilot();
+                    state.boat.sheet = parseFloat(e.target.value);
+                    if (state.autoTrim) toggleAutoTrim();
+                });
+            }
+
+            const btnAutoP = document.getElementById("btnAutopilot");
+            if (btnAutoP) btnAutoP.addEventListener("click", toggleAutopilot);
+
+            const btnAutoT = document.getElementById("btnAutoTrim");
+            if (btnAutoT) btnAutoT.addEventListener("click", toggleAutoTrim);
+
+            const btnCurr = document.getElementById("btnCurrents");
+            if (btnCurr) btnCurr.addEventListener("click", toggleCurrents);
+
+            const btnVariableWaves =
+                document.getElementById("btnVariableWaves");
+            if (btnVariableWaves)
+                btnVariableWaves.addEventListener("click", toggleVariableWaves);
+
+            const btnVec = document.getElementById("btnVectors");
+            if (btnVec) {
+                btnVec.addEventListener("click", () => {
+                    state.showVectors = !state.showVectors;
+                    btnVec.classList.toggle("active", state.showVectors);
+                    btnVec.textContent = `Vectors: ${state.showVectors ? "ON" : "OFF"}`;
+                });
+            }
+
+            const btnTackEl = document.getElementById("btnTack");
+            if (btnTackEl) {
+                btnTackEl.addEventListener("click", () => {
+                    if (state.isAutopilot) toggleAutopilot();
+                    tackBoat();
+                });
+            }
+
+            const btnResetEl = document.getElementById("btnReset");
+            if (btnResetEl) btnResetEl.addEventListener("click", resetSim);
+
+            const btnSpeedEl = document.getElementById("btnSpeed");
+            if (btnSpeedEl) {
+                btnSpeedEl.addEventListener("click", () => {
+                    state.simSpeed =
+                        state.simSpeed === 1.0
+                            ? 2.0
+                            : state.simSpeed === 2.0
+                              ? 3.0
+                              : 1.0;
+                    btnSpeedEl.textContent = `Speed: ${state.simSpeed}x`;
+                });
+            }
+
+            if (canvas) {
+                canvas.addEventListener("click", (e) => {
+                    const rect = canvas.getBoundingClientRect();
+                    const clickX = e.clientX - rect.left;
+                    if (clickX < canvas.width / 2) {
+                        state.boat.rudder = Math.max(
+                            -30,
+                            state.boat.rudder - 15,
+                        );
+                    } else {
+                        state.boat.rudder = Math.min(
+                            30,
+                            state.boat.rudder + 15,
+                        );
+                    }
+                });
+            }
+
+            function render() {
+                const b = state.boat;
+                const g = state.ghost;
+                const w = state.wind;
+                const cur = state.current;
+                const waves = state.waves;
+                const diag = state.diagnostics;
+                const activeTarget =
+                    state.mode === "endless"
+                        ? state.target
+                        : state.waypoints[state.currentWaypointIdx];
+
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.save();
+                ctx.translate(canvas.width / 2, canvas.height / 2);
+                ctx.scale(state.camera.scale, state.camera.scale);
+                ctx.translate(-b.x, -b.y);
+
+                // 1. Water Grid
+                ctx.strokeStyle = "rgba(255, 255, 255, 0.04)";
+                ctx.lineWidth = 1;
+                const gridSize = 60;
+                const minX = Math.floor((b.x - 500) / gridSize) * gridSize;
+                const maxX = Math.ceil((b.x + 500) / gridSize) * gridSize;
+                const minY = Math.floor((b.y - 500) / gridSize) * gridSize;
+                const maxY = Math.ceil((b.y + 500) / gridSize) * gridSize;
+                ctx.beginPath();
+                for (let x = minX; x <= maxX; x += gridSize) {
+                    ctx.moveTo(x, minY);
+                    ctx.lineTo(x, maxY);
+                }
+                for (let y = minY; y <= maxY; y += gridSize) {
+                    ctx.moveTo(minX, y);
+                    ctx.lineTo(maxX, y);
+                }
+                ctx.stroke();
+
+                // 2. Rolling Ocean Wave Swell Crests
+                drawOceanWaveCrests(b, waves);
+
+                // 3. Current Wavelets
+                if (cur.enabled) {
+                    state.currentParticles.forEach((p) => {
+                        drawCurrentWavelet(p.x, p.y, cur.dir, p.phase);
+                    });
+                }
+
+                // 4. Wind Arrows
+                state.windParticles.forEach((p) => {
+                    drawWindArrow(p.x, p.y, w.dir, p.length);
+                });
+
+                // 5. Laylines
+                ctx.save();
+                ctx.strokeStyle = "rgba(74, 222, 128, 0.35)";
+                ctx.lineWidth = 2;
+                ctx.setLineDash([8, 8]);
+                const lay1X =
+                    activeTarget.x - Math.sin(w.dir - 45 * DEG_TO_RAD) * 350;
+                const lay1Y =
+                    activeTarget.y + Math.cos(w.dir - 45 * DEG_TO_RAD) * 350;
+                const lay2X =
+                    activeTarget.x - Math.sin(w.dir + 45 * DEG_TO_RAD) * 350;
+                const lay2Y =
+                    activeTarget.y + Math.cos(w.dir + 45 * DEG_TO_RAD) * 350;
+                ctx.beginPath();
+                ctx.moveTo(lay1X, lay1Y);
+                ctx.lineTo(activeTarget.x, activeTarget.y);
+                ctx.moveTo(lay2X, lay2Y);
+                ctx.lineTo(activeTarget.x, activeTarget.y);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                ctx.restore();
+
+                // 6. Target Guideline
+                ctx.beginPath();
+                ctx.moveTo(b.x, b.y);
+                ctx.lineTo(activeTarget.x, activeTarget.y);
+                ctx.strokeStyle = "rgba(253, 224, 71, 0.4)";
+                ctx.lineWidth = 2;
+                ctx.setLineDash([6, 6]);
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                // 7. Target Buoys
+                if (state.mode === "endless") {
+                    drawTargetBuoy(state.target, true);
+                } else {
+                    state.waypoints.forEach((wp, idx) => {
+                        drawTargetBuoy(
+                            wp,
+                            idx === state.currentWaypointIdx ||
+                                idx === state.ghostWaypointIdx,
+                        );
+                    });
+                }
+
+                // 8. Wakes
+                if (state.wake.length > 1) {
+                    ctx.beginPath();
+                    ctx.moveTo(state.wake[0].x, state.wake[0].y);
+                    for (let i = 1; i < state.wake.length; i++)
+                        ctx.lineTo(state.wake[i].x, state.wake[i].y);
+                    ctx.strokeStyle = "rgba(255, 255, 255, 0.3)";
+                    ctx.lineWidth = 3;
+                    ctx.stroke();
+                }
+                if (g.enabled && g.difficulty !== "off" && g.wake.length > 1) {
+                    ctx.beginPath();
+                    ctx.moveTo(g.wake[0].x, g.wake[0].y);
+                    for (let i = 1; i < g.wake.length; i++)
+                        ctx.lineTo(g.wake[i].x, g.wake[i].y);
+                    ctx.strokeStyle = "rgba(251, 146, 60, 0.35)";
+                    ctx.lineWidth = 2.5;
+                    ctx.stroke();
+                }
+
+                // 9. No-Go Zone Wedge
+                ctx.beginPath();
+                ctx.moveTo(b.x, b.y);
+                const noGoCenterAngle = w.dir - Math.PI / 2;
+                ctx.arc(
+                    b.x,
+                    b.y,
+                    55,
+                    noGoCenterAngle - 38 * DEG_TO_RAD,
+                    noGoCenterAngle + 38 * DEG_TO_RAD,
+                );
+                ctx.closePath();
+                ctx.fillStyle = "rgba(239, 68, 68, 0.18)";
+                ctx.fill();
+                ctx.strokeStyle = "rgba(239, 68, 68, 0.5)";
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+
+                // 10. Force Vectors
+                if (state.showVectors && diag) {
+                    drawArrow(
+                        b.x,
+                        b.y,
+                        diag.appFlowX * 3.5,
+                        diag.appFlowY * 3.5,
+                        "#38bdf8",
+                        2.5,
+                        "Apparent Wind",
+                    );
+                    drawArrow(
+                        b.x,
+                        b.y,
+                        diag.sailForceX * 0.08,
+                        diag.sailForceY * 0.08,
+                        "#c084fc",
+                        2.5,
+                        "Sail Force",
+                    );
+                    drawArrow(
+                        b.x,
+                        b.y,
+                        diag.keelForceX * 0.08,
+                        diag.keelForceY * 0.08,
+                        "#fb923c",
+                        2.5,
+                        "Keel Reaction",
+                    );
+                    drawArrow(
+                        b.x,
+                        b.y,
+                        diag.netThrustX * 0.08,
+                        diag.netThrustY * 0.08,
+                        "#4ade80",
+                        3.0,
+                        "Net Drive",
+                    );
+                }
+
+                // 11. Draw Ghost Rival Boat
+                if (g.enabled && g.difficulty !== "off") {
+                    drawGhostBoat(g);
+                }
+
+                // 12. Draw Player Boat
+                drawPlayerBoat(b, diag);
+
+                ctx.restore();
+
+                updateInstructorHUD(diag, activeTarget);
+            }
+
+            function drawOceanWaveCrests(b, waves) {
+                ctx.save();
+                const waveSpacing = 80;
+                const numWaves = 14;
+                const angle = waves.dir - Math.PI / 2;
+                const waveSpeedPx = 30;
+                const offset = (state.simTime * waveSpeedPx) % waveSpacing;
+
+                ctx.rotate(angle);
+                const cx = b.x * Math.cos(-angle) - b.y * Math.sin(-angle);
+                const cy = b.x * Math.sin(-angle) + b.y * Math.cos(-angle);
+
+                for (let i = -numWaves; i <= numWaves; i++) {
+                    const yPos = cy + i * waveSpacing - offset;
+                    ctx.strokeStyle = `rgba(255, 255, 255, ${0.08 + Math.sin(state.simTime * 2 + i) * 0.04})`;
+                    ctx.lineWidth = 2.5;
+                    ctx.setLineDash([12, 16, 30, 18]);
+                    ctx.beginPath();
+                    ctx.moveTo(cx - 500, yPos);
+                    ctx.lineTo(cx + 500, yPos);
+                    ctx.stroke();
+                }
+                ctx.setLineDash([]);
+                ctx.restore();
+            }
+
+            function drawPlayerBoat(b, diag) {
+                ctx.save();
+                ctx.translate(b.x, b.y);
+                ctx.rotate(b.heading);
+
+                const rollRad = b.rollAngle * DEG_TO_RAD;
+                const mastShiftX = -Math.sin(rollRad) * 16;
+                const hullWidthScale = Math.max(0.7, Math.cos(rollRad * 0.7));
+                const pitchBobbingY = (b.pitchAngle / 4.0) * 2.0;
+
+                // Keel
+                ctx.fillStyle = "#475569";
+                ctx.fillRect(-2, -6, 4, 12);
+
+                // Rudder
+                ctx.save();
+                ctx.translate(0, 11);
+                ctx.rotate(-b.rudder * DEG_TO_RAD);
+                ctx.fillStyle = "#e2e8f0";
+                ctx.fillRect(-1.5, 0, 3, 7);
+                ctx.restore();
+
+                // Hull
+                ctx.save();
+                ctx.scale(hullWidthScale, 1.0);
+                ctx.beginPath();
+                ctx.moveTo(0, -12 + pitchBobbingY);
+                ctx.bezierCurveTo(4.5, -6, 5, 6, 3.5, 11);
+                ctx.lineTo(-3.5, 11);
+                ctx.bezierCurveTo(-5, 6, -4.5, -6, 0, -12 + pitchBobbingY);
+                ctx.fillStyle = "#f8fafc";
+                ctx.fill();
+                ctx.strokeStyle = "#0284c7";
+                ctx.lineWidth = 1.2;
+                ctx.stroke();
+                ctx.restore();
+
+                // Boom & Mainsail
+                ctx.save();
+                ctx.translate(0, -2);
+                const isStbdWind = diag && diag.awaDeg >= 0;
+                let boomAngle =
+                    (isStbdWind ? -b.sheet : b.sheet) +
+                    (diag && diag.isLuffing ? b.sailFlutter : 0);
+                ctx.rotate(boomAngle * DEG_TO_RAD);
+
+                ctx.strokeStyle = "#334155";
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(mastShiftX * 0.3, 15);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.quadraticCurveTo(
+                    (isStbdWind ? -3.5 : 3.5) + mastShiftX * 0.5,
+                    7.5,
+                    mastShiftX * 0.3,
+                    15,
+                );
+                ctx.strokeStyle =
+                    diag && diag.isLuffing ? "#ef4444" : "#38bdf8";
+                ctx.lineWidth = 3.5;
+                ctx.stroke();
+                ctx.restore();
+
+                // Mainsheet Rope
+                const boomTipX =
+                    -Math.sin(boomAngle * DEG_TO_RAD) * 15 + mastShiftX * 0.3;
+                const boomTipY = -2 + Math.cos(boomAngle * DEG_TO_RAD) * 15;
+                ctx.beginPath();
+                ctx.moveTo(0, 6);
+                ctx.lineTo(boomTipX, boomTipY);
+                ctx.strokeStyle = "#fde047";
+                ctx.lineWidth = 1.2;
+                ctx.stroke();
+
+                // Windex Flag
+                ctx.save();
+                ctx.translate(mastShiftX, 0);
+                ctx.rotate(state.wind.dir - b.heading);
+                ctx.strokeStyle = "#fde047";
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(0, 14);
+                ctx.stroke();
+                ctx.restore();
+
+                ctx.restore();
+            }
+
+            function drawGhostBoat(g) {
+                ctx.save();
+                ctx.translate(g.x, g.y);
+
+                ctx.font = "bold 10px sans-serif";
+                ctx.fillStyle = "#fb923c";
+                ctx.textAlign = "center";
+                ctx.fillText(
+                    `👻 GHOST RACER (${g.difficulty.toUpperCase()})`,
+                    0,
+                    -22,
+                );
+
+                ctx.rotate(g.heading);
+
+                const rollRad = g.rollAngle * DEG_TO_RAD;
+                const mastShiftX = -Math.sin(rollRad) * 14;
+
+                ctx.fillStyle = "rgba(71, 85, 105, 0.6)";
+                ctx.fillRect(-2, -6, 4, 12);
+
+                ctx.save();
+                ctx.translate(0, 11);
+                ctx.rotate(-g.rudder * DEG_TO_RAD);
+                ctx.fillStyle = "rgba(251, 146, 60, 0.8)";
+                ctx.fillRect(-1.5, 0, 3, 7);
+                ctx.restore();
+
+                ctx.beginPath();
+                ctx.moveTo(0, -12);
+                ctx.bezierCurveTo(4.5, -6, 5, 6, 3.5, 11);
+                ctx.lineTo(-3.5, 11);
+                ctx.bezierCurveTo(-5, 6, -4.5, -6, 0, -12);
+                ctx.fillStyle = "rgba(251, 146, 60, 0.75)";
+                ctx.fill();
+                ctx.strokeStyle = "#fb923c";
+                ctx.lineWidth = 1.4;
+                ctx.stroke();
+
+                ctx.save();
+                ctx.translate(0, -2);
+                const trueWindLocalRight = -(
+                    -Math.sin(state.wind.dir) * Math.cos(g.heading) +
+                    Math.cos(state.wind.dir) * Math.sin(g.heading)
+                );
+                let boomAngle = trueWindLocalRight >= 0 ? -g.sheet : g.sheet;
+                ctx.rotate(boomAngle * DEG_TO_RAD);
+
+                ctx.strokeStyle = "#7c2d12";
+                ctx.lineWidth = 2.2;
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(mastShiftX * 0.3, 15);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.quadraticCurveTo(
+                    (trueWindLocalRight >= 0 ? -3.5 : 3.5) + mastShiftX * 0.4,
+                    7.5,
+                    mastShiftX * 0.3,
+                    15,
+                );
+                ctx.strokeStyle = "rgba(251, 146, 60, 0.9)";
+                ctx.lineWidth = 3.2;
+                ctx.stroke();
+                ctx.restore();
+
+                ctx.restore();
+            }
+
+            function drawTargetBuoy(target, isActive) {
+                ctx.save();
+                ctx.translate(target.x, target.y);
+                if (isActive) {
+                    ctx.beginPath();
+                    ctx.arc(
+                        0,
+                        0,
+                        target.radius + Math.sin(performance.now() * 0.006) * 4,
+                        0,
+                        Math.PI * 2,
+                    );
+                    ctx.strokeStyle = target.color;
+                    ctx.lineWidth = 2.5;
+                    ctx.stroke();
+                }
+                ctx.beginPath();
+                ctx.arc(0, 0, 10, 0, Math.PI * 2);
+                ctx.fillStyle = target.color;
+                ctx.fill();
+                ctx.font = "bold 12px sans-serif";
+                ctx.fillStyle = "#f8fafc";
+                ctx.textAlign = "center";
+                ctx.fillText(target.name, 0, -18);
+                ctx.restore();
+            }
+
+            function drawWindArrow(x, y, windDir, len) {
+                const dx = -Math.sin(windDir) * len;
+                const dy = Math.cos(windDir) * len;
+                const x2 = x + dx,
+                    y2 = y + dy;
+                const angle = Math.atan2(dy, dx);
+
+                ctx.save();
+                ctx.strokeStyle = "rgba(56, 189, 248, 0.35)";
+                ctx.fillStyle = "rgba(56, 189, 248, 0.35)";
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                ctx.lineTo(x2, y2);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(x2, y2);
+                ctx.lineTo(
+                    x2 - 5 * Math.cos(angle - Math.PI / 6),
+                    y2 - 5 * Math.sin(angle - Math.PI / 6),
+                );
+                ctx.lineTo(
+                    x2 - 5 * Math.cos(angle + Math.PI / 6),
+                    y2 - 5 * Math.sin(angle + Math.PI / 6),
+                );
+                ctx.fill();
+                ctx.restore();
+            }
+
+            function drawCurrentWavelet(x, y, curDir, phase) {
+                const angle = curDir - Math.PI / 2;
+                const len = 16;
+                const waveOffset = Math.sin(phase) * 3;
+
+                ctx.save();
+                ctx.translate(x, y);
+                ctx.rotate(angle);
+                ctx.strokeStyle = "rgba(6, 182, 212, 0.35)";
+                ctx.lineWidth = 1.4;
+                ctx.beginPath();
+                ctx.moveTo(-len / 2, waveOffset);
+                ctx.quadraticCurveTo(0, -waveOffset, len / 2, waveOffset);
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            function drawArrow(x1, y1, dx, dy, color, width = 2.5, label = "") {
+                const len = Math.hypot(dx, dy);
+                if (len < 3) return;
+                const x2 = x1 + dx,
+                    y2 = y1 + dy,
+                    head = Math.min(8, len * 0.3),
+                    angle = Math.atan2(dy, dx);
+                ctx.save();
+                ctx.strokeStyle = color;
+                ctx.fillStyle = color;
+                ctx.lineWidth = width;
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(x2, y2);
+                ctx.lineTo(
+                    x2 - head * Math.cos(angle - Math.PI / 6),
+                    y2 - head * Math.sin(angle - Math.PI / 6),
+                );
+                ctx.lineTo(
+                    x2 - head * Math.cos(angle + Math.PI / 6),
+                    y2 - head * Math.sin(angle + Math.PI / 6),
+                );
+                ctx.fill();
+
+                if (label && len > 20) {
+                    ctx.font = "9px sans-serif";
+                    ctx.fillStyle = color;
+                    ctx.textAlign = "center";
+                    ctx.fillText(
+                        label,
+                        x2 + Math.cos(angle) * 10,
+                        y2 + Math.sin(angle) * 10,
+                    );
+                }
+                ctx.restore();
+            }
+
+            function updateInstructorHUD(diag, activeTarget) {
+                if (!diag) return;
+                const b = state.boat;
+                const g = state.ghost;
+                const w = state.wind;
+                const cur = state.current;
+                const waves = state.waves;
+
+                const hdgDeg = (Math.round(b.heading * RAD_TO_DEG) + 360) % 360;
+                const windFromDeg =
+                    (Math.round(w.dir * RAD_TO_DEG) + 360) % 360;
+                const curTowardsDeg =
+                    (Math.round(cur.dir * RAD_TO_DEG) + 360) % 360;
+
+                setText("sogDisplay", state.sogKnots.toFixed(1));
+                setText("stwSub", `/ ${state.stwKnots.toFixed(1)} STW`);
+                setText("hdgDisplay", hdgDeg.toString().padStart(3, "0"));
+                setText(
+                    "cogSub",
+                    `/ ${Math.round(state.cogDeg).toString().padStart(3, "0")}° COG`,
+                );
+
+                setText("vmgDisplay", `${state.vmgKnots.toFixed(1)} kts`);
+                setText(
+                    "twaDisplay",
+                    `${Math.abs(Math.round(diag.twaDeg))}° ${diag.twaDeg >= 0 ? "Stbd" : "Port"}`,
+                );
+                setText(
+                    "targetBearing",
+                    `${Math.round(state.targetBearingDeg)}°`,
+                );
+                setText("targetDist", `${Math.round(state.distToTarget)}m`);
+                setText("targetName", activeTarget.name);
+
+                const boomSide = diag.awaDeg >= 0 ? "Port" : "Stbd";
+                setText("boomSide", `${Math.round(b.sheet)}° ${boomSide}`);
+
+                setText(
+                    "windStatusText",
+                    `${Math.round(w.speed)} KTS @ ${windFromDeg}°`,
+                );
+                setText(
+                    "windSubText",
+                    `From ${getCompassHeading(windFromDeg)} (Blowing ${(windFromDeg + 180) % 360}°)`,
+                );
+                setText(
+                    "currentStatusText",
+                    `${cur.speed.toFixed(1)} KTS @ ${curTowardsDeg}°`,
+                );
+                setText(
+                    "wavesStatusText",
+                    `${waves.height.toFixed(1)}m ${waves.enabled ? "Variable" : "Steady"} @ ${Math.round(waves.dir * RAD_TO_DEG + 360) % 360}°`,
+                );
+                setText(
+                    "wavesFrequencyText",
+                    `Period: ${waves.period.toFixed(1)}s / ${(1 / waves.period).toFixed(2)}Hz`,
+                );
+
+                // Passenger Comfort HUD Update
+                const comfortPct = Math.round(b.comfortPct);
+                setText("comfortScore", `${comfortPct}%`);
+                setStyle("comfortBar", "width", `${comfortPct}%`);
+
+                const rollSide = b.rollAngle >= 0 ? "Stbd" : "Port";
+                setText(
+                    "rollAngle",
+                    `${Math.abs(Math.round(b.rollAngle))}° ${rollSide}`,
+                );
+                setText("pitchAngle", `${Math.abs(Math.round(b.pitchAngle))}°`);
+
+                if (comfortPct >= 85) {
+                    setText("comfortRating", "Smooth Cruise 🥂");
+                    setStyle("comfortRating", "color", "var(--accent-green)");
+                    setText("bottomComfortBadge", "Smooth 🥂");
+                    setStyle(
+                        "bottomComfortBadge",
+                        "color",
+                        "var(--accent-green)",
+                    );
+                    setStyle(
+                        "comfortBar",
+                        "backgroundColor",
+                        "var(--accent-green)",
+                    );
+                } else if (comfortPct >= 65) {
+                    setText("comfortRating", "Moderate Chop ⚠️");
+                    setStyle("comfortRating", "color", "var(--accent-yellow)");
+                    setText("bottomComfortBadge", "Moderate Chop ⚠️");
+                    setStyle(
+                        "bottomComfortBadge",
+                        "color",
+                        "var(--accent-yellow)",
+                    );
+                    setStyle(
+                        "comfortBar",
+                        "backgroundColor",
+                        "var(--accent-yellow)",
+                    );
+                } else {
+                    setText("comfortRating", "Seasick / Rough 🤢");
+                    setStyle("comfortRating", "color", "var(--accent-red)");
+                    setText("bottomComfortBadge", "Rough Roll 🤢");
+                    setStyle(
+                        "bottomComfortBadge",
+                        "color",
+                        "var(--accent-red)",
+                    );
+                    setStyle(
+                        "comfortBar",
+                        "backgroundColor",
+                        "var(--accent-red)",
+                    );
+                }
+
+                if (state.mode === "comfort") {
+                    const challenge = state.comfortChallenge;
+                    const remaining = Math.max(
+                        0,
+                        challenge.surviveTime - challenge.elapsed,
+                    );
+                    const sickPct = Math.min(
+                        100,
+                        (challenge.sickTime / challenge.maxSickTime) * 100,
+                    );
+                    setText("modeStatus", "🥂 Comfort Challenge");
+                    setText(
+                        "targetName",
+                        challenge.lost
+                            ? "Friends Seasick"
+                            : challenge.won
+                              ? "Friends Happy"
+                              : "Keep Friends Comfortable",
+                    );
+                    setText("targetDist", `${Math.ceil(remaining)}s left`);
+
+                    if (challenge.lost) {
+                        setStyle("comfortLossOverlay", "display", "block");
+                        setStyle(
+                            "coachBanner",
+                            "borderColor",
+                            "var(--accent-red)",
+                        );
+                        setText("coachBadge", "🤢 FRIENDS GOT SICK — YOU LOSE");
+                        setStyle("coachBadge", "color", "var(--accent-red)");
+                        setText("coachStatusTag", "RESET TO TRY AGAIN");
+                        setStyle(
+                            "coachStatusTag",
+                            "color",
+                            "var(--accent-red)",
+                        );
+                        setHTML(
+                            "coachInstruction",
+                            "Too much rough motion built up. Keep the boat smoother across the chop next time.",
+                        );
+                        setHTML(
+                            "coachDetail",
+                            "Avoid beam-on waves, reduce hard steering, and keep passenger comfort above 65%.",
+                        );
+                        return;
+                    }
+
+                    setStyle("comfortLossOverlay", "display", "none");
+
+                    if (challenge.won) {
+                        setStyle(
+                            "coachBanner",
+                            "borderColor",
+                            "var(--accent-green)",
+                        );
+                        setText("coachBadge", "🥂 FRIENDS STAYED COMFORTABLE");
+                        setStyle("coachBadge", "color", "var(--accent-green)");
+                        setText("coachStatusTag", "CHALLENGE WON");
+                        setStyle(
+                            "coachStatusTag",
+                            "color",
+                            "var(--accent-green)",
+                        );
+                        setHTML(
+                            "coachInstruction",
+                            "Great helming — your friends survived the chop without getting sick.",
+                        );
+                        setHTML(
+                            "coachDetail",
+                            "Reset to run the comfort challenge again or switch modes.",
+                        );
+                        return;
+                    }
+
+                    if (comfortPct < challenge.sickThreshold) {
+                        setStyle(
+                            "coachBanner",
+                            "borderColor",
+                            "var(--accent-yellow)",
+                        );
+                        setText("coachBadge", "⚠️ FRIENDS FEELING SICK");
+                        setStyle("coachBadge", "color", "var(--accent-yellow)");
+                        setText(
+                            "coachStatusTag",
+                            `${Math.round(sickPct)}% SICKNESS BUILDUP`,
+                        );
+                        setStyle(
+                            "coachStatusTag",
+                            "color",
+                            "var(--accent-yellow)",
+                        );
+                        setHTML(
+                            "coachInstruction",
+                            "Smooth the ride now: turn off beam-on chop and avoid sharp rudder changes.",
+                        );
+                        setHTML(
+                            "coachDetail",
+                            `Comfort is ${comfortPct}%. If sickness buildup reaches 100%, you lose.`,
+                        );
+                    } else {
+                        setStyle(
+                            "coachBanner",
+                            "borderColor",
+                            "var(--accent-green)",
+                        );
+                        setText("coachBadge", "🥂 FRIENDS ON BOARD");
+                        setStyle("coachBadge", "color", "var(--accent-green)");
+                        setText(
+                            "coachStatusTag",
+                            `${Math.ceil(remaining)}S TO GO`,
+                        );
+                        setStyle(
+                            "coachStatusTag",
+                            "color",
+                            "var(--accent-green)",
+                        );
+                        setHTML(
+                            "coachInstruction",
+                            `Keep passenger comfort above ${challenge.sickThreshold}% through the chop for ${Math.ceil(remaining)} more seconds.`,
+                        );
+                        setHTML(
+                            "coachDetail",
+                            `Sickness buildup: ${Math.round(sickPct)}%. Better comfort drains it back down.`,
+                        );
+                    }
+                    return;
+                }
+
+                // Race Standings HUD
+                if (g.enabled && g.difficulty !== "off") {
+                    const diffMeters = g.distToTarget - state.distToTarget;
+                    const buoyLead = state.score - state.ghostScore;
+                    const absBuoyLead = Math.abs(buoyLead);
+                    const isAhead =
+                        state.mode !== "endless" && buoyLead !== 0
+                            ? buoyLead > 0
+                            : diffMeters >= 0;
+                    setText("ghostSpd", `${g.sogKnots.toFixed(1)} kts`);
+                    setText("ghostDist", `${Math.round(g.distToTarget)}m`);
+
+                    if (isAhead) {
+                        setText("standingDisplay", "1st Place 🥇");
+                        setStyle(
+                            "standingDisplay",
+                            "color",
+                            "var(--accent-green)",
+                        );
+                        setText(
+                            "ghostDiffText",
+                            state.mode !== "endless" && buoyLead !== 0
+                                ? `+${buoyLead} Buoy${buoyLead === 1 ? "" : "s"} Ahead`
+                                : `+${Math.round(diffMeters)}m Ahead`,
+                        );
+                        setStyle(
+                            "ghostDiffText",
+                            "color",
+                            "var(--accent-green)",
+                        );
+                    } else {
+                        setText("standingDisplay", "2nd Place 🥈");
+                        setStyle(
+                            "standingDisplay",
+                            "color",
+                            "var(--accent-orange)",
+                        );
+                        setText(
+                            "ghostDiffText",
+                            state.mode !== "endless" && buoyLead !== 0
+                                ? `${absBuoyLead} Buoy${absBuoyLead === 1 ? "" : "s"} Behind`
+                                : `${Math.round(diffMeters)}m Behind`,
+                        );
+                        setStyle(
+                            "ghostDiffText",
+                            "color",
+                            "var(--accent-orange)",
+                        );
+                    }
+                }
+
+                if (state.windShiftMessage) {
+                    setHTML("coachInstruction", state.windShiftMessage);
+                }
+
+                if (state.isAutopilot) {
+                    setStyle(
+                        "coachBanner",
+                        "borderColor",
+                        "var(--accent-green)",
+                    );
+                    setText(
+                        "coachBadge",
+                        "🤖 AI AUTOPILOT BALANCING COMFORT & SPEED",
+                    );
+                    setStyle("coachBadge", "color", "var(--accent-green)");
+                    setText("coachStatusTag", "AUTONOMOUS");
+                    setStyle("coachStatusTag", "color", "var(--accent-green)");
+                    setHTML(
+                        "coachDetail",
+                        `AI maintains ~${comfortPct}% passenger comfort while staying at peak VMG.`,
+                    );
+                    return;
+                }
+
+                const twaAbs = Math.abs(diag.twaDeg);
+                if (twaAbs < 38) {
+                    setStyle("coachBanner", "borderColor", "var(--accent-red)");
+                    setText("coachBadge", "⚠️ NO-GO ZONE (IN IRONS)");
+                    setStyle("coachBadge", "color", "var(--accent-red)");
+                    setText("coachStatusTag", "TURN RUDDER");
+                    setStyle("coachStatusTag", "color", "var(--accent-red)");
+                    const opt1 = (windFromDeg - 45 + 360) % 360;
+                    const opt2 = (windFromDeg + 45) % 360;
+                    setHTML(
+                        "coachInstruction",
+                        `Steer away from wind! Turn to Heading <strong>${opt1}°</strong> or <strong>${opt2}°</strong>.`,
+                    );
+                    setHTML(
+                        "coachDetail",
+                        `True wind is coming from ${windFromDeg}°. Turn at least 40° off the wind.`,
+                    );
+                } else if (comfortPct < 65) {
+                    setStyle(
+                        "coachBanner",
+                        "borderColor",
+                        "var(--accent-yellow)",
+                    );
+                    setText("coachBadge", "⚠️ PASSENGER COMFORT WARNING");
+                    setStyle("coachBadge", "color", "var(--accent-yellow)");
+                    setText("coachStatusTag", "ROUGH MOTION");
+                    setStyle("coachStatusTag", "color", "var(--accent-yellow)");
+                    setHTML(
+                        "coachInstruction",
+                        `Heavy rocking! Angle across the wave crests and avoid taking waves directly on the beam.`,
+                    );
+                    setHTML(
+                        "coachDetail",
+                        `Rolling angle is reaching ${Math.abs(Math.round(b.rollAngle))}°. Ease sheets slightly or smooth out steering turns!`,
+                    );
+                } else if (state.vmgKnots > 2.8) {
+                    setStyle(
+                        "coachBanner",
+                        "borderColor",
+                        "var(--accent-green)",
+                    );
+                    setText("coachBadge", "✅ EXCELLENT SMOOTH CRUISE");
+                    setStyle("coachBadge", "color", "var(--accent-green)");
+                    setText("coachStatusTag", "COMFORT: 95%");
+                    setStyle("coachStatusTag", "color", "var(--accent-green)");
+                    setHTML(
+                        "coachInstruction",
+                        `Great VMG (+${state.vmgKnots.toFixed(1)} kts) & smooth comfort (${comfortPct}%)!`,
+                    );
+                    setHTML(
+                        "coachDetail",
+                        `Cutting through swell smoothly. Friends on board are enjoying the ride!`,
+                    );
+                }
+            }
+
+            function getCompassHeading(deg) {
+                const points = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
+                return points[Math.round(deg / 45) % 8];
+            }
+
+            // Resilient Loop with NaN and undefined protection
+            function loop(now) {
+                const currentTime =
+                    typeof now === "number" && !isNaN(now)
+                        ? now
+                        : performance.now();
+                let dt = (currentTime - state.lastTime) * 0.001;
+                if (isNaN(dt) || dt <= 0 || dt > 0.1) dt = 0.016;
+                state.lastTime = currentTime;
+
+                handleInputs(dt);
+                updatePhysics(dt);
+                render();
+
+                requestAnimationFrame(loop);
+            }
+            requestAnimationFrame(loop);
+        </script>
+    </body>
+</html>
