@@ -3284,7 +3284,7 @@
                 ctx.setLineDash([]);
 
                 // 7. Target Buoys
-                if (state.mode === "endless") {
+                if (state.mode === "endless" || isRulesMode()) {
                     drawTargetBuoy(state.target, true);
                 } else {
                     state.waypoints.forEach((wp, idx) => {
