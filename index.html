@@ -262,6 +262,9 @@
                 gap: 7px;
                 min-width: 250px;
             }
+            .mobile-version-note {
+                display: none;
+            }
             .btn {
                 background: #1e293b;
                 color: #f8fafc;
@@ -628,6 +631,22 @@
                     padding: 10px;
                     border-radius: 14px;
                     background: rgba(13, 23, 41, 0.9);
+                }
+
+                .mobile-version-note {
+                    display: block;
+                    padding: 8px 10px;
+                    border: 1px solid rgba(56, 189, 248, 0.35);
+                    border-radius: 10px;
+                    background: rgba(56, 189, 248, 0.12);
+                    color: #e0f2fe;
+                    font-size: 12px;
+                    line-height: 1.25;
+                    text-align: center;
+                }
+
+                .mobile-version-note strong {
+                    color: #7dd3fc;
                 }
 
                 .hud-right > .card:not(.controls-panel) {
@@ -1091,6 +1110,13 @@
 
             <div class="hud-right">
                 <div class="card controls-panel">
+                    <div class="mobile-version-note">
+                        <strong>Mobile Regatta Mode:</strong> this phone layout
+                        is simplified. Use a tablet or desktop browser for the
+                        full simulator with modes, traffic, waves, currents,
+                        scenery, and spinnaker.
+                    </div>
+
                     <div class="mobile-advanced-control">
                         <div class="card-title">Game Mode</div>
                         <select class="select-input" id="modeSelect">
