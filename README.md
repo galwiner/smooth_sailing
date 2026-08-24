@@ -16,7 +16,7 @@ https://galwiner.github.io/smooth_sailing/
 - Why VMG matters more than simply pointing at the target
 - How currents, waves, scenery, and obstacles change route planning
 - How basic right-of-way rules affect traffic avoidance
-- How sail trim and rudder input interact
+- How sail trim, spinnaker timing, and rudder input interact
 
 ## Controls
 
@@ -36,6 +36,7 @@ https://galwiner.github.io/smooth_sailing/
 | `C`       | Toggle currents where available                |
 | `M`       | Toggle variable waves where available          |
 | `G`       | Toggle variable wind                           |
+| `X`       | Hoist/douse spinnaker where available          |
 | `L`       | Toggle shoreline/island scenery                |
 
 ### Mouse / touch
@@ -49,7 +50,7 @@ https://galwiner.github.io/smooth_sailing/
 - **Basic Wind Mode** — starts with steady wind only. Currents, waves, ghost competition, and comfort challenge are off.
 - **Manual Wind Direction** — lets you set the true wind direction directly.
 - **Endless Navigator** — adds changing courses, currents, and wind shifts.
-- **Regatta Training** — fixed-course buoy sailing.
+- **Regatta Training** — fixed-course buoy sailing with optional downwind spinnaker practice.
 - **Right-of-Way Trainer** — sail to the target while avoiding traffic and respecting simplified give-way rules.
 - **Passenger Comfort Challenge** — adds waves and a comfort objective.
 

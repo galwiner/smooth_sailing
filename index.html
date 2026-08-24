@@ -1274,6 +1274,17 @@
 
                     <div style="display: flex; gap: 6px">
                         <button
+                            class="btn mobile-advanced-control"
+                            id="btnSpinnaker"
+                            style="flex: 1"
+                            title="Spinnaker: downwind sail. Press X to hoist/douse. Works best off the wind."
+                        >
+                            Spinnaker: OFF
+                        </button>
+                    </div>
+
+                    <div style="display: flex; gap: 6px">
+                        <button
                             class="btn"
                             id="btnTack"
                             style="flex: 1"
@@ -1499,6 +1510,9 @@
                     rudder: 0,
                     sheet: 18,
                     sailFlutter: 0,
+                    spinnakerHoisted: false,
+                    spinnakerCollapsed: false,
+                    spinnakerPower: 0,
                     length: 9.0,
                     mass: 2500,
                     sailArea: 28,
@@ -1655,6 +1669,51 @@
                 btn.textContent = `${label}: ${active ? "ON" : "OFF"}`;
             }
 
+            function canUseSpinnakerMode() {
+                return (
+                    !isMobileLayout() &&
+                    !isBasicMode() &&
+                    !isRulesMode() &&
+                    state.mode !== "comfort"
+                );
+            }
+
+            function clearSpinnaker() {
+                state.boat.spinnakerHoisted = false;
+                state.boat.spinnakerCollapsed = false;
+                state.boat.spinnakerPower = 0;
+            }
+
+            function syncSpinnakerButton() {
+                const btn = document.getElementById("btnSpinnaker");
+                if (!btn) return;
+                const b = state.boat;
+                const disabled = !canUseSpinnakerMode();
+                btn.disabled = disabled;
+                btn.style.opacity = disabled ? "0.55" : "1";
+                btn.classList.toggle(
+                    "active",
+                    b.spinnakerHoisted && !b.spinnakerCollapsed,
+                );
+                btn.textContent = b.spinnakerHoisted
+                    ? b.spinnakerCollapsed
+                        ? "Spinnaker: COLLAPSED"
+                        : "Spinnaker: ON"
+                    : "Spinnaker: OFF";
+            }
+
+            function toggleSpinnaker() {
+                if (!canUseSpinnakerMode()) return;
+                const b = state.boat;
+                b.spinnakerHoisted = !b.spinnakerHoisted;
+                b.spinnakerCollapsed = false;
+                b.spinnakerPower = 0;
+                state.windShiftMessage = b.spinnakerHoisted
+                    ? "🌈 Spinnaker hoisted: bear away onto a broad reach or run to fill it."
+                    : "🌈 Spinnaker doused: back to mainsail-only sailing.";
+                syncSpinnakerButton();
+            }
+
             function applyMobileRegattaDefaults() {
                 if (!isMobileLayout()) return;
                 state.mode = "classic";
@@ -1667,6 +1726,9 @@
                 state.wind.variable = false;
                 state.autoTrim = false;
                 state.showVectors = true;
+                state.boat.spinnakerHoisted = false;
+                state.boat.spinnakerCollapsed = false;
+                state.boat.spinnakerPower = 0;
                 const modeSelect = document.getElementById("modeSelect");
                 if (modeSelect) modeSelect.value = "classic";
                 const ghostSelect = document.getElementById("ghostSelect");
@@ -1785,6 +1847,7 @@
                     "opacity",
                     state.waves.height > 0.05 ? "1" : "0.35",
                 );
+                syncSpinnakerButton();
             }
 
             function applyModeSettings() {
@@ -1800,6 +1863,7 @@
                     state.waves.period = 5.2;
                     state.wind.variable = false;
                     state.wind.speed = 14.0;
+                    clearSpinnaker();
                     setManualWindDirection(0);
                     state.windShiftMessage =
                         "💨 Basic Wind Mode: only steady wind affects your boat. Steer toward the buoy and watch your wind angle.";
@@ -1832,6 +1896,7 @@
                     state.waves.basePeriod = 5.2;
                     state.waves.period = 5.2;
                     state.wind.speed = 14.0;
+                    clearSpinnaker();
                     state.windShiftMessage =
                         "⚖️ Right-of-Way Trainer: reach the buoy, but keep clear when the rules say you give way.";
                 } else if (state.mode === "comfort") {
@@ -1842,6 +1907,7 @@
                     state.waves.enabled = true;
                     state.waves.baseHeight = 2.0;
                     state.waves.basePeriod = 4.1;
+                    clearSpinnaker();
                 } else {
                     state.wind.variable = state.mode === "endless";
                     state.current.enabled = state.mode === "endless";
@@ -2463,12 +2529,40 @@
                     -fSailLateral * 0.94 - b.speedLateral * 3200;
                 const netLateralForce = fSailLateral + keelLateralReaction;
 
+                let spinnakerDrive = 0;
+                if (!isGhost && b.spinnakerHoisted) {
+                    const twaAbs = Math.abs(twaDeg);
+                    const usable = twaAbs >= 105 && twaAbs <= 178;
+                    b.spinnakerCollapsed = !usable;
+                    if (usable) {
+                        const peak = 140;
+                        const normalized = Math.max(
+                            0,
+                            1 - Math.abs(twaAbs - peak) / 45,
+                        );
+                        b.spinnakerPower = Math.max(0.25, normalized);
+                        spinnakerDrive =
+                            0.5 *
+                            1.225 *
+                            Math.pow(appWindSpeedMps, 2) *
+                            18 *
+                            b.spinnakerPower;
+                    } else {
+                        b.spinnakerPower = 0;
+                    }
+                    syncSpinnakerButton();
+                } else if (!isGhost) {
+                    b.spinnakerCollapsed = false;
+                    b.spinnakerPower = 0;
+                }
+
                 const speedFwd = Math.max(0, b.speedForward);
                 const hullDrag =
                     45 * speedFwd +
                     28 * Math.pow(speedFwd, 2) +
                     5.0 * Math.pow(speedFwd, 4);
-                const netForwardForce = fSailForward - hullDrag;
+                const netForwardForce =
+                    fSailForward + spinnakerDrive - hullDrag;
 
                 b.speedForward = Math.max(
                     -0.5,
@@ -2540,6 +2634,7 @@
                         (Math.atan2(vGroundX, -vGroundY) * RAD_TO_DEG + 360) %
                         360,
                     appWindSpeedKnots: appWindSpeedMps * MPS_TO_KNOTS,
+                    spinnakerDrive,
                     sailForceX: fSailForward * forwardX + fSailLateral * rightX,
                     sailForceY: fSailForward * forwardY + fSailLateral * rightY,
                     keelForceX: rightX * keelLateralReaction,
@@ -2760,6 +2855,7 @@
                 )
                     toggleVariableWaves();
                 if (e.key.toLowerCase() === "g") toggleVariableWind();
+                if (e.key.toLowerCase() === "x") toggleSpinnaker();
                 if (e.key.toLowerCase() === "l" && !isRulesMode())
                     toggleScenery();
                 if (e.key.toLowerCase() === "v") {
@@ -3002,6 +3098,7 @@
                 state.boat.speedLateral = 0;
                 state.boat.angularVel = 0;
                 state.boat.rudder = 0;
+                clearSpinnaker();
                 state.wake = [];
                 state.currentWaypointIdx = 0;
                 state.ghostWaypointIdx = 0;
@@ -3141,6 +3238,10 @@
 
             const btnAutoT = document.getElementById("btnAutoTrim");
             if (btnAutoT) btnAutoT.addEventListener("click", toggleAutoTrim);
+
+            const btnSpinnaker = document.getElementById("btnSpinnaker");
+            if (btnSpinnaker)
+                btnSpinnaker.addEventListener("click", toggleSpinnaker);
 
             const btnScenery = document.getElementById("btnScenery");
             if (btnScenery) btnScenery.addEventListener("click", toggleScenery);
@@ -3630,6 +3731,39 @@
                 ctx.lineWidth = 1.2;
                 ctx.stroke();
                 ctx.restore();
+
+                // Spinnaker
+                if (b.spinnakerHoisted) {
+                    const flutter = Math.sin(state.simTime * 6) * 2;
+                    ctx.save();
+                    ctx.globalAlpha = b.spinnakerCollapsed
+                        ? 0.35
+                        : 0.72 + b.spinnakerPower * 0.22;
+                    ctx.fillStyle = b.spinnakerCollapsed
+                        ? "rgba(248, 113, 113, 0.55)"
+                        : "rgba(236, 72, 153, 0.78)";
+                    ctx.strokeStyle = b.spinnakerCollapsed
+                        ? "#fecaca"
+                        : "#f0abfc";
+                    ctx.lineWidth = 1.5;
+                    ctx.beginPath();
+                    ctx.moveTo(0, -10 + pitchBobbingY);
+                    ctx.quadraticCurveTo(
+                        -18,
+                        -34 + flutter + pitchBobbingY,
+                        0,
+                        -46 + pitchBobbingY,
+                    );
+                    ctx.quadraticCurveTo(
+                        18,
+                        -34 - flutter + pitchBobbingY,
+                        0,
+                        -10 + pitchBobbingY,
+                    );
+                    ctx.fill();
+                    ctx.stroke();
+                    ctx.restore();
+                }
 
                 // Boom & Mainsail
                 ctx.save();
@@ -4355,6 +4489,42 @@
                     setHTML(
                         "coachDetail",
                         `True wind is coming from ${windFromDeg}°. Turn at least 40° off the wind.`,
+                    );
+                } else if (b.spinnakerHoisted && b.spinnakerCollapsed) {
+                    setStyle(
+                        "coachBanner",
+                        "borderColor",
+                        "var(--accent-yellow)",
+                    );
+                    setText("coachBadge", "🌈 SPINNAKER COLLAPSED");
+                    setStyle("coachBadge", "color", "var(--accent-yellow)");
+                    setText("coachStatusTag", "BEAR AWAY OR DOUSE");
+                    setStyle("coachStatusTag", "color", "var(--accent-yellow)");
+                    setHTML(
+                        "coachInstruction",
+                        "Too high for the spinnaker — bear away below about 105° true wind angle or douse it with <strong>X</strong>.",
+                    );
+                    setHTML(
+                        "coachDetail",
+                        `Current true wind angle is ${Math.round(twaAbs)}°. Spinnakers only work off the wind.`,
+                    );
+                } else if (b.spinnakerHoisted && b.spinnakerPower > 0.6) {
+                    setStyle(
+                        "coachBanner",
+                        "borderColor",
+                        "var(--accent-green)",
+                    );
+                    setText("coachBadge", "🌈 SPINNAKER DRAWING WELL");
+                    setStyle("coachBadge", "color", "var(--accent-green)");
+                    setText("coachStatusTag", "DOWNWIND POWER");
+                    setStyle("coachStatusTag", "color", "var(--accent-green)");
+                    setHTML(
+                        "coachInstruction",
+                        `Great downwind angle: the spinnaker is adding power at ${Math.round(twaAbs)}° true wind angle.`,
+                    );
+                    setHTML(
+                        "coachDetail",
+                        "Use it on broad reaches and runs, then douse before heading back upwind.",
                     );
                 } else if (comfortPct < 65) {
                     setStyle(
