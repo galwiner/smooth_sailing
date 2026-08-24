@@ -430,11 +430,103 @@
             [title] {
                 cursor: help;
             }
+
+            .tour-overlay {
+                position: fixed;
+                inset: 0;
+                z-index: 100;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: rgba(2, 6, 23, 0.72);
+                backdrop-filter: blur(7px);
+                padding: 18px;
+            }
+
+            .tour-card {
+                width: min(520px, 94vw);
+                background: var(--panel-bg);
+                border: 2px solid var(--accent-blue);
+                border-radius: 18px;
+                box-shadow: 0 24px 80px rgba(0, 0, 0, 0.65);
+                padding: 22px;
+            }
+
+            .tour-eyebrow {
+                color: var(--accent-blue);
+                font-size: 12px;
+                font-weight: 800;
+                letter-spacing: 0.12em;
+                text-transform: uppercase;
+                margin-bottom: 8px;
+            }
+
+            .tour-title {
+                font-size: 26px;
+                font-weight: 850;
+                line-height: 1.12;
+                margin-bottom: 10px;
+            }
+
+            .tour-body {
+                color: #cbd5e1;
+                font-size: 15px;
+                line-height: 1.5;
+                margin-bottom: 16px;
+            }
+
+            .tour-progress {
+                color: var(--text-muted);
+                font-size: 12px;
+                margin-bottom: 14px;
+            }
+
+            .tour-actions {
+                display: flex;
+                gap: 8px;
+                justify-content: flex-end;
+                flex-wrap: wrap;
+            }
+
+            .tour-actions .btn {
+                width: auto;
+                min-width: 98px;
+                padding: 10px 14px;
+            }
+
+            .tour-hidden {
+                display: none;
+            }
         </style>
     </head>
     <body>
         <div id="canvas-container">
             <canvas id="simCanvas"></canvas>
+
+            <div class="tour-overlay" id="appTourOverlay">
+                <div class="tour-card">
+                    <div class="tour-eyebrow" id="tourEyebrow">
+                        Welcome aboard
+                    </div>
+                    <div class="tour-title" id="tourTitle">
+                        Start with wind only
+                    </div>
+                    <div class="tour-body" id="tourBody">
+                        Basic mode is on by default: no currents, waves, ghost
+                        racer, or comfort challenge. Learn how wind moves the
+                        boat first.
+                    </div>
+                    <div class="tour-progress" id="tourProgress">
+                        Step 1 of 5
+                    </div>
+                    <div class="tour-actions">
+                        <button class="btn" id="tourSkipBtn">Skip Tour</button>
+                        <button class="btn active" id="tourNextBtn">
+                            Next
+                        </button>
+                    </div>
+                </div>
+            </div>
 
             <div class="loss-overlay" id="comfortLossOverlay">
                 <div class="loss-overlay-title">
@@ -735,6 +827,9 @@
                     <div>
                         <div class="card-title">Game Mode</div>
                         <select class="select-input" id="modeSelect">
+                            <option value="basic" selected>
+                                💨 Basic Wind Mode (Wind Only)
+                            </option>
                             <option value="endless">
                                 🌊 Endless Navigator (Currents + Shifts)
                             </option>
@@ -753,21 +848,26 @@
                             <option value="hard">
                                 🔴 Hard (Pro Racer - Perfect VMG & Tacks)
                             </option>
-                            <option value="medium" selected>
+                            <option value="medium">
                                 🟡 Medium (Club Sailor - Small Lags)
                             </option>
                             <option value="easy">
                                 🟢 Easy (Novice - Makes Mistakes & Luffs)
                             </option>
-                            <option value="off">⚪ Off (Solo Mode)</option>
+                            <option value="off" selected>
+                                ⚪ Off (Solo Mode)
+                            </option>
                         </select>
                     </div>
 
                     <div>
                         <div class="card-title">Wave State</div>
                         <select class="select-input" id="waveSelect">
-                            <option value="moderate" selected>
+                            <option value="moderate">
                                 🌊 Moderate Swell (1.2m)
+                            </option>
+                            <option value="off" selected>
+                                💨 Off (Wind Only)
                             </option>
                             <option value="rough">⛈️ Rough Chop (2.2m)</option>
                             <option value="calm">🏖️ Calm Seas (0.4m)</option>
@@ -1061,7 +1161,7 @@
             const RAD_TO_DEG = 180 / Math.PI;
 
             const state = {
-                mode: "endless",
+                mode: "basic",
                 score: 0,
                 ghostScore: 0,
                 comfortChallenge: {
@@ -1095,8 +1195,8 @@
                 },
 
                 ghost: {
-                    enabled: true,
-                    difficulty: "medium",
+                    enabled: false,
+                    difficulty: "off",
                     x: 25,
                     y: 130,
                     heading: -45 * DEG_TO_RAD,
@@ -1124,14 +1224,14 @@
                     shiftTimer: 18.0,
                 },
                 current: {
-                    enabled: true,
+                    enabled: false,
                     speed: 1.8,
                     dir: 90 * DEG_TO_RAD,
                 },
                 waves: {
-                    enabled: true,
-                    height: 1.2,
-                    baseHeight: 1.2,
+                    enabled: false,
+                    height: 0,
+                    baseHeight: 0,
                     period: 5.2,
                     basePeriod: 5.2,
                     dir: 315 * DEG_TO_RAD,
@@ -1196,6 +1296,115 @@
                     phase: Math.random() * Math.PI * 2,
                     speed: 40 + Math.random() * 20,
                 });
+            }
+
+            function isBasicMode() {
+                return state.mode === "basic";
+            }
+
+            function setControlDisabled(id, disabled) {
+                const el = document.getElementById(id);
+                if (!el) return;
+                el.disabled = disabled;
+                el.style.opacity = disabled ? "0.55" : "1";
+                el.title = disabled
+                    ? "Disabled in Basic Wind Mode. Switch modes to enable this feature."
+                    : el.title;
+            }
+
+            function syncFeatureControls() {
+                const basic = isBasicMode();
+
+                const ghostSelect = document.getElementById("ghostSelect");
+                if (ghostSelect) ghostSelect.value = state.ghost.difficulty;
+                setControlDisabled("ghostSelect", basic);
+                setControlDisabled("waveSelect", basic);
+                setControlDisabled("btnVariableWaves", basic);
+                setControlDisabled("btnCurrents", basic);
+                setControlDisabled("btnAutopilot", basic);
+
+                const currentsBtn = document.getElementById("btnCurrents");
+                if (currentsBtn) {
+                    currentsBtn.classList.toggle(
+                        "active",
+                        state.current.enabled,
+                    );
+                    currentsBtn.textContent = `Currents: ${state.current.enabled ? "ON" : "OFF"}`;
+                }
+
+                const variableWavesBtn =
+                    document.getElementById("btnVariableWaves");
+                if (variableWavesBtn) {
+                    variableWavesBtn.classList.toggle(
+                        "active",
+                        state.waves.enabled,
+                    );
+                    variableWavesBtn.textContent = `Variable Waves: ${state.waves.enabled ? "ON" : "OFF"}`;
+                }
+
+                setStyle(
+                    "raceCard",
+                    "display",
+                    state.ghost.enabled ? "block" : "none",
+                );
+                setStyle(
+                    "currentBadge",
+                    "opacity",
+                    state.current.enabled ? "1" : "0.35",
+                );
+                setStyle(
+                    "wavesBadge",
+                    "opacity",
+                    state.waves.height > 0.05 ? "1" : "0.35",
+                );
+            }
+
+            function applyModeSettings() {
+                if (isBasicMode()) {
+                    if (state.isAutopilot) toggleAutopilot();
+                    state.current.enabled = false;
+                    state.ghost.enabled = false;
+                    state.ghost.difficulty = "off";
+                    state.waves.enabled = false;
+                    state.waves.baseHeight = 0;
+                    state.waves.height = 0;
+                    state.waves.basePeriod = 5.2;
+                    state.waves.period = 5.2;
+                    state.wind.baseDir = 0;
+                    state.wind.dir = 0;
+                    state.wind.targetDir = 0;
+                    state.wind.speed = 14.0;
+                    state.windShiftMessage =
+                        "💨 Basic Wind Mode: only the wind affects your boat. Steer toward the buoy and watch your wind angle.";
+                } else if (state.mode === "comfort") {
+                    state.current.enabled = false;
+                    state.ghost.enabled = false;
+                    state.ghost.difficulty = "off";
+                    state.waves.enabled = true;
+                    state.waves.baseHeight = 2.0;
+                    state.waves.basePeriod = 4.1;
+                } else {
+                    state.current.enabled = state.mode === "endless";
+                    state.waves.enabled = true;
+                    if (state.waves.baseHeight <= 0.05) {
+                        state.waves.baseHeight = 1.2;
+                        state.waves.basePeriod = 5.2;
+                    }
+                    const ghostSelect = document.getElementById("ghostSelect");
+                    state.ghost.difficulty = ghostSelect
+                        ? ghostSelect.value
+                        : "medium";
+                    state.ghost.enabled = state.ghost.difficulty !== "off";
+                }
+
+                const waveSelect = document.getElementById("waveSelect");
+                if (waveSelect)
+                    waveSelect.value = isBasicMode()
+                        ? "off"
+                        : state.mode === "comfort"
+                          ? "rough"
+                          : "moderate";
+                syncFeatureControls();
             }
 
             function normalizeAngle(rad) {
@@ -1430,7 +1639,8 @@
                     rightY = Math.sin(b.heading);
 
                 const currentSpeedMps =
-                    (cur.enabled ? cur.speed : 0) * KNOTS_TO_MPS;
+                    (cur.enabled && !isBasicMode() ? cur.speed : 0) *
+                    KNOTS_TO_MPS;
                 const curFlowX = Math.sin(cur.dir) * currentSpeedMps;
                 const curFlowY = -Math.cos(cur.dir) * currentSpeedMps;
 
@@ -1572,13 +1782,14 @@
                 const beamWaveFactor = Math.abs(Math.sin(relWaveAngle));
                 const headWaveFactor = Math.cos(relWaveAngle);
 
+                const waveHeight = isBasicMode() ? 0 : waves.height;
                 const rollOscillation =
-                    waves.height *
+                    waveHeight *
                     5.5 *
                     beamWaveFactor *
                     Math.sin((2 * Math.PI * state.simTime) / waves.period);
                 const pitchOscillation =
-                    waves.height *
+                    waveHeight *
                     3.5 *
                     Math.abs(headWaveFactor) *
                     Math.sin(
@@ -1812,8 +2023,10 @@
                 }
                 if (e.key.toLowerCase() === "t") toggleAutoTrim();
                 if (e.key.toLowerCase() === "p") toggleAutopilot();
-                if (e.key.toLowerCase() === "c") toggleCurrents();
-                if (e.key.toLowerCase() === "m") toggleVariableWaves();
+                if (e.key.toLowerCase() === "c" && !isBasicMode())
+                    toggleCurrents();
+                if (e.key.toLowerCase() === "m" && !isBasicMode())
+                    toggleVariableWaves();
                 if (e.key.toLowerCase() === "v") {
                     state.showVectors = !state.showVectors;
                     const btnVec = document.getElementById("btnVectors");
@@ -1944,6 +2157,7 @@
             }
 
             function toggleVariableWaves() {
+                if (isBasicMode()) return;
                 state.waves.enabled = !state.waves.enabled;
                 if (!state.waves.enabled) {
                     state.waves.height = state.waves.baseHeight;
@@ -1958,6 +2172,7 @@
             }
 
             function toggleCurrents() {
+                if (isBasicMode()) return;
                 state.current.enabled = !state.current.enabled;
                 const btn = document.getElementById("btnCurrents");
                 if (btn) {
@@ -1972,6 +2187,7 @@
             }
 
             function toggleAutopilot() {
+                if (isBasicMode() && !state.isAutopilot) return;
                 state.isAutopilot = !state.isAutopilot;
                 const btn = document.getElementById("btnAutopilot");
                 if (state.isAutopilot) {
@@ -2036,6 +2252,7 @@
                 state.wind.dir = 0;
                 state.wind.targetDir = 0;
                 state.windShiftMessage = "";
+                applyModeSettings();
                 resetComfortChallenge();
                 state.target = {
                     name: "Buoy #1",
@@ -2060,6 +2277,7 @@
                 modeSelectEl.addEventListener("change", (e) => {
                     state.mode = e.target.value;
                     e.target.blur();
+                    applyModeSettings();
                     resetSim();
                 });
             }
@@ -2067,6 +2285,11 @@
             const ghostSelectEl = document.getElementById("ghostSelect");
             if (ghostSelectEl) {
                 ghostSelectEl.addEventListener("change", (e) => {
+                    if (isBasicMode()) {
+                        e.target.value = "off";
+                        e.target.blur();
+                        return;
+                    }
                     state.ghost.difficulty = e.target.value;
                     state.ghost.enabled = e.target.value !== "off";
                     e.target.blur();
@@ -2083,17 +2306,25 @@
                 waveSelectEl.addEventListener("change", (e) => {
                     const val = e.target.value;
                     e.target.blur();
-                    if (val === "moderate") {
+                    if (val === "off") {
+                        state.waves.enabled = false;
+                        state.waves.baseHeight = 0;
+                        state.waves.height = 0;
+                    } else if (val === "moderate") {
                         state.waves.baseHeight = 1.2;
                         state.waves.basePeriod = 5.2;
+                        state.waves.enabled = true;
                     } else if (val === "rough") {
                         state.waves.baseHeight = 2.2;
                         state.waves.basePeriod = 4.2;
+                        state.waves.enabled = true;
                     } else {
                         state.waves.baseHeight = 0.4;
                         state.waves.basePeriod = 6.5;
+                        state.waves.enabled = true;
                     }
                     updateDynamicWaves(0);
+                    syncFeatureControls();
                 });
             }
 
@@ -2218,10 +2449,12 @@
                 ctx.stroke();
 
                 // 2. Rolling Ocean Wave Swell Crests
-                drawOceanWaveCrests(b, waves);
+                if (!isBasicMode() && waves.height > 0.05) {
+                    drawOceanWaveCrests(b, waves);
+                }
 
                 // 3. Current Wavelets
-                if (cur.enabled) {
+                if (cur.enabled && !isBasicMode()) {
                     state.currentParticles.forEach((p) => {
                         drawCurrentWavelet(p.x, p.y, cur.dir, p.phase);
                     });
@@ -2287,7 +2520,12 @@
                     ctx.lineWidth = 3;
                     ctx.stroke();
                 }
-                if (g.enabled && g.difficulty !== "off" && g.wake.length > 1) {
+                if (
+                    !isBasicMode() &&
+                    g.enabled &&
+                    g.difficulty !== "off" &&
+                    g.wake.length > 1
+                ) {
                     ctx.beginPath();
                     ctx.moveTo(g.wake[0].x, g.wake[0].y);
                     for (let i = 1; i < g.wake.length; i++)
@@ -2356,7 +2594,7 @@
                 }
 
                 // 11. Draw Ghost Rival Boat
-                if (g.enabled && g.difficulty !== "off") {
+                if (!isBasicMode() && g.enabled && g.difficulty !== "off") {
                     drawGhostBoat(g);
                 }
 
@@ -2714,18 +2952,37 @@
                     "windSubText",
                     `From ${getCompassHeading(windFromDeg)} (Blowing ${(windFromDeg + 180) % 360}°)`,
                 );
-                setText(
-                    "currentStatusText",
-                    `${cur.speed.toFixed(1)} KTS @ ${curTowardsDeg}°`,
-                );
-                setText(
-                    "wavesStatusText",
-                    `${waves.height.toFixed(1)}m ${waves.enabled ? "Variable" : "Steady"} @ ${Math.round(waves.dir * RAD_TO_DEG + 360) % 360}°`,
-                );
-                setText(
-                    "wavesFrequencyText",
-                    `Period: ${waves.period.toFixed(1)}s / ${(1 / waves.period).toFixed(2)}Hz`,
-                );
+                if (cur.enabled && !isBasicMode()) {
+                    setText(
+                        "currentStatusText",
+                        `${cur.speed.toFixed(1)} KTS @ ${curTowardsDeg}°`,
+                    );
+                } else {
+                    setText(
+                        "currentStatusText",
+                        isBasicMode() ? "OFF IN BASIC MODE" : "OFF",
+                    );
+                }
+
+                if (waves.height > 0.05 && !isBasicMode()) {
+                    setText(
+                        "wavesStatusText",
+                        `${waves.height.toFixed(1)}m ${waves.enabled ? "Variable" : "Steady"} @ ${Math.round(waves.dir * RAD_TO_DEG + 360) % 360}°`,
+                    );
+                    setText(
+                        "wavesFrequencyText",
+                        `Period: ${waves.period.toFixed(1)}s / ${(1 / waves.period).toFixed(2)}Hz`,
+                    );
+                } else {
+                    setText(
+                        "wavesStatusText",
+                        isBasicMode() ? "OFF IN BASIC MODE" : "OFF",
+                    );
+                    setText(
+                        "wavesFrequencyText",
+                        isBasicMode() ? "Wind-only sailing" : "No swell",
+                    );
+                }
 
                 // Passenger Comfort HUD Update
                 const comfortPct = Math.round(b.comfortPct);
@@ -2911,8 +3168,32 @@
                     return;
                 }
 
+                if (isBasicMode()) {
+                    setText("modeStatus", "💨 Basic Wind Mode");
+                    setStyle("modeStatus", "color", "var(--accent-blue)");
+                    setStyle(
+                        "coachBanner",
+                        "borderColor",
+                        "var(--accent-blue)",
+                    );
+                    setText("coachBadge", "💨 BASIC WIND MODE");
+                    setStyle("coachBadge", "color", "var(--accent-blue)");
+                    setText("coachStatusTag", "WIND ONLY");
+                    setStyle("coachStatusTag", "color", "var(--accent-yellow)");
+                    if (!state.windShiftMessage) {
+                        setHTML(
+                            "coachInstruction",
+                            "Steer to the active buoy while keeping your boat about 45° off the wind.",
+                        );
+                    }
+                    setHTML(
+                        "coachDetail",
+                        "Currents, waves, ghost competition, and comfort challenge are off. Switch Game Mode when you are ready for advanced sailing.",
+                    );
+                }
+
                 // Race Standings HUD
-                if (g.enabled && g.difficulty !== "off") {
+                if (!isBasicMode() && g.enabled && g.difficulty !== "off") {
                     const diffMeters = g.distToTarget - state.distToTarget;
                     const buoyLead = state.score - state.ghostScore;
                     const absBuoyLead = Math.abs(buoyLead);
@@ -3046,6 +3327,75 @@
                 const points = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
                 return points[Math.round(deg / 45) % 8];
             }
+
+            const tourSteps = [
+                {
+                    eyebrow: "Welcome aboard",
+                    title: "Start with wind only",
+                    body: "Basic mode is on by default: no currents, waves, ghost racer, or comfort challenge. Learn how wind moves the boat first.",
+                },
+                {
+                    eyebrow: "Step 2",
+                    title: "Read the blue wind arrows",
+                    body: "The blue arrows show the true wind flow. Your boat accelerates best when it is angled across the wind, not pointed directly into it.",
+                },
+                {
+                    eyebrow: "Step 3",
+                    title: "Steer with A / D or the helm buttons",
+                    body: "Use A and D, the arrow keys, the on-screen helm buttons, or click the left/right side of the water to turn the rudder.",
+                },
+                {
+                    eyebrow: "Step 4",
+                    title: "Aim for the active buoy",
+                    body: "The yellow dashed line points to the target. Watch VMG: positive VMG means you are making progress toward the buoy.",
+                },
+                {
+                    eyebrow: "Step 5",
+                    title: "Add complexity when ready",
+                    body: "Switch Game Mode to Endless, Regatta Training, or Comfort Challenge to add currents, waves, competition, and advanced sailing decisions.",
+                },
+            ];
+            let tourStepIdx = 0;
+
+            function updateTour() {
+                const step = tourSteps[tourStepIdx];
+                setText("tourEyebrow", step.eyebrow);
+                setText("tourTitle", step.title);
+                setText("tourBody", step.body);
+                setText(
+                    "tourProgress",
+                    `Step ${tourStepIdx + 1} of ${tourSteps.length}`,
+                );
+                setText(
+                    "tourNextBtn",
+                    tourStepIdx === tourSteps.length - 1
+                        ? "Start Sailing"
+                        : "Next",
+                );
+            }
+
+            function closeTour() {
+                const overlay = document.getElementById("appTourOverlay");
+                if (overlay) overlay.classList.add("tour-hidden");
+            }
+
+            const tourNextBtn = document.getElementById("tourNextBtn");
+            if (tourNextBtn) {
+                tourNextBtn.addEventListener("click", () => {
+                    if (tourStepIdx >= tourSteps.length - 1) {
+                        closeTour();
+                        return;
+                    }
+                    tourStepIdx++;
+                    updateTour();
+                });
+            }
+
+            const tourSkipBtn = document.getElementById("tourSkipBtn");
+            if (tourSkipBtn) tourSkipBtn.addEventListener("click", closeTour);
+
+            applyModeSettings();
+            updateTour();
 
             // Resilient Loop with NaN and undefined protection
             function loop(now) {
