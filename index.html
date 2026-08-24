@@ -631,7 +631,6 @@
 
                 .mobile-advanced-control,
                 #btnAutoTrim,
-                #btnVectors,
                 #btnCurrents,
                 #btnScenery,
                 #btnSpeed {
@@ -1624,7 +1623,7 @@
                 state.waves.height = 0;
                 state.wind.variable = false;
                 state.autoTrim = false;
-                state.showVectors = false;
+                state.showVectors = true;
                 const modeSelect = document.getElementById("modeSelect");
                 if (modeSelect) modeSelect.value = "classic";
                 const ghostSelect = document.getElementById("ghostSelect");
