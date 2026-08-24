@@ -15,27 +15,28 @@ https://galwiner.github.io/smooth_sailing/
 - How tacking lets you work upwind
 - Why VMG matters more than simply pointing at the target
 - How currents, waves, scenery, and obstacles change route planning
+- How basic right-of-way rules affect traffic avoidance
 - How sail trim and rudder input interact
 
 ## Controls
 
 ### Keyboard
 
-| Key | Action |
-| --- | --- |
-| `A` / `D` | Steer rudder port / starboard |
-| `←` / `→` | Steer rudder port / starboard |
+| Key       | Action                                         |
+| --------- | ---------------------------------------------- |
+| `A` / `D` | Steer rudder port / starboard                  |
+| `←` / `→` | Steer rudder port / starboard                  |
 | `W` / `S` | Trim main sheet in / out when auto-trim is off |
 | `↑` / `↓` | Trim main sheet in / out when auto-trim is off |
-| `Space` | Tack |
-| `R` | Reset |
-| `P` | Toggle autopilot demo |
-| `T` | Toggle auto-trim |
-| `V` | Toggle force vectors |
-| `C` | Toggle currents where available |
-| `M` | Toggle variable waves where available |
-| `G` | Toggle variable wind |
-| `L` | Toggle shoreline/island scenery |
+| `Space`   | Tack                                           |
+| `R`       | Reset                                          |
+| `P`       | Toggle autopilot demo                          |
+| `T`       | Toggle auto-trim                               |
+| `V`       | Toggle force vectors                           |
+| `C`       | Toggle currents where available                |
+| `M`       | Toggle variable waves where available          |
+| `G`       | Toggle variable wind                           |
+| `L`       | Toggle shoreline/island scenery                |
 
 ### Mouse / touch
 
@@ -49,6 +50,7 @@ https://galwiner.github.io/smooth_sailing/
 - **Manual Wind Direction** — lets you set the true wind direction directly.
 - **Endless Navigator** — adds changing courses, currents, and wind shifts.
 - **Regatta Training** — fixed-course buoy sailing.
+- **Right-of-Way Trainer** — sail to the target while avoiding traffic and respecting simplified give-way rules.
 - **Passenger Comfort Challenge** — adds waves and a comfort objective.
 
 ## Mobile experience
@@ -66,7 +68,7 @@ Advanced environment controls are hidden on small screens to keep the water, win
 
 ## Physics note
 
-This is an educational toy simulator, not a physically exact sailing model. The goal is to make wind angle, no-go zones, tacking, VMG, and route planning intuitive. Some sailing dynamics are simplified for clarity and playability.
+This is an educational toy simulator, not a physically exact sailing model or a complete racing-rules reference. The goal is to make wind angle, no-go zones, tacking, VMG, route planning, and basic give-way rules intuitive. Some sailing dynamics and rules interactions are simplified for clarity and playability.
 
 ## License
 

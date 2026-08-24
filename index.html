@@ -791,6 +791,20 @@
                 </div>
             </div>
 
+            <div class="loss-overlay" id="rulesLossOverlay">
+                <div class="loss-overlay-title">⚖️ Right-of-way mistake</div>
+                <div class="loss-overlay-detail" id="rulesLossDetail">
+                    You were the give-way boat and did not keep clear.<br />
+                    Press <span class="key-pill">R</span> or use the button
+                    below to reset and try again.
+                </div>
+                <div class="loss-overlay-actions">
+                    <button class="btn" id="btnRulesReset">
+                        Reset &amp; Close (<span class="key-pill">R</span>)
+                    </button>
+                </div>
+            </div>
+
             <div class="coach-banner" id="coachBanner">
                 <div class="coach-header">
                     <span id="coachBadge" style="color: var(--accent-blue)"
@@ -1091,6 +1105,9 @@
                             </option>
                             <option value="classic">
                                 ⛵ Regatta Training (Fixed Course)
+                            </option>
+                            <option value="rules">
+                                ⚖️ Right-of-Way Trainer
                             </option>
                             <option value="comfort">
                                 🥂 Passenger Comfort Challenge
@@ -1580,6 +1597,13 @@
                 windShiftMessage: "",
                 grounded: false,
                 groundedReason: "",
+                rulesTrainer: {
+                    failed: false,
+                    failureReason: "",
+                    activeHint:
+                        "Sail to the target while keeping clear when you are the give-way boat.",
+                    traffic: [],
+                },
 
                 scenery: {
                     shoreX: -255,
@@ -1614,6 +1638,10 @@
 
             function isManualWindMode() {
                 return state.mode === "manual";
+            }
+
+            function isRulesMode() {
+                return state.mode === "rules";
             }
 
             function isMobileLayout() {
@@ -1681,7 +1709,8 @@
             }
 
             function syncFeatureControls() {
-                const windOnlyMode = isBasicMode() || isManualWindMode();
+                const windOnlyMode =
+                    isBasicMode() || isManualWindMode() || isRulesMode();
 
                 const ghostSelect = document.getElementById("ghostSelect");
                 if (ghostSelect) ghostSelect.value = state.ghost.difficulty;
@@ -1704,10 +1733,10 @@
                 const variableWindBtn =
                     document.getElementById("btnVariableWind");
                 if (variableWindBtn) {
-                    variableWindBtn.disabled = isManualWindMode();
-                    variableWindBtn.style.opacity = isManualWindMode()
-                        ? "0.55"
-                        : "1";
+                    variableWindBtn.disabled =
+                        isManualWindMode() || isRulesMode();
+                    variableWindBtn.style.opacity =
+                        isManualWindMode() || isRulesMode() ? "0.55" : "1";
                     variableWindBtn.classList.toggle(
                         "active",
                         state.wind.variable,
@@ -1783,6 +1812,20 @@
                     setManualWindDirection(windSlider ? windSlider.value : 0);
                     state.windShiftMessage =
                         "🧭 Manual Wind Mode: use the Wind Direction slider to choose where the wind comes from.";
+                } else if (isRulesMode()) {
+                    if (state.isAutopilot) toggleAutopilot();
+                    state.wind.variable = false;
+                    state.current.enabled = false;
+                    state.ghost.enabled = false;
+                    state.ghost.difficulty = "off";
+                    state.waves.enabled = false;
+                    state.waves.baseHeight = 0;
+                    state.waves.height = 0;
+                    state.waves.basePeriod = 5.2;
+                    state.waves.period = 5.2;
+                    state.wind.speed = 14.0;
+                    state.windShiftMessage =
+                        "⚖️ Right-of-Way Trainer: reach the buoy, but keep clear when the rules say you give way.";
                 } else if (state.mode === "comfort") {
                     state.wind.variable = false;
                     state.current.enabled = false;
@@ -1809,7 +1852,7 @@
                 const waveSelect = document.getElementById("waveSelect");
                 if (waveSelect)
                     waveSelect.value =
-                        isBasicMode() || isManualWindMode()
+                        isBasicMode() || isManualWindMode() || isRulesMode()
                             ? "off"
                             : state.mode === "comfort"
                               ? "rough"
@@ -1822,6 +1865,173 @@
                 while (rad > Math.PI) rad -= 2 * Math.PI;
                 while (rad < -Math.PI) rad += 2 * Math.PI;
                 return rad;
+            }
+
+            function resetRulesTraffic() {
+                const b = state.boat;
+                state.rulesTrainer.traffic = [
+                    {
+                        name: "Starboard Traffic",
+                        x: b.x - 190,
+                        y: b.y - 60,
+                        heading: 82 * DEG_TO_RAD,
+                        speed: 2.5,
+                        color: "#f97316",
+                    },
+                    {
+                        name: "Leeward Boat",
+                        x: b.x + 170,
+                        y: b.y + 35,
+                        heading: -105 * DEG_TO_RAD,
+                        speed: 2.2,
+                        color: "#eab308",
+                    },
+                    {
+                        name: "Overtaken Boat",
+                        x: b.x + 25,
+                        y: b.y - 210,
+                        heading: -8 * DEG_TO_RAD,
+                        speed: 1.5,
+                        color: "#a78bfa",
+                    },
+                ];
+                state.rulesTrainer.activeHint =
+                    "Sail to the target while keeping clear when you are the give-way boat.";
+            }
+
+            function getBoatTack(heading) {
+                const twa = normalizeAngle(heading - state.wind.dir);
+                return twa >= 0 ? "starboard" : "port";
+            }
+
+            function isWindwardOf(boatA, boatB) {
+                const crossWindX = Math.cos(state.wind.dir);
+                const crossWindY = Math.sin(state.wind.dir);
+                const sideA = boatA.x * crossWindX + boatA.y * crossWindY;
+                const sideB = boatB.x * crossWindX + boatB.y * crossWindY;
+                return sideA > sideB;
+            }
+
+            function getRightOfWaySituation(other) {
+                const b = state.boat;
+                const dx = other.x - b.x;
+                const dy = other.y - b.y;
+                const forwardX = Math.sin(b.heading);
+                const forwardY = -Math.cos(b.heading);
+                const aheadDist = dx * forwardX + dy * forwardY;
+                const playerSpeed = Math.max(0, b.speedForward) * MPS_TO_KNOTS;
+
+                if (aheadDist > 0 && playerSpeed > other.speed + 0.6) {
+                    return {
+                        playerGiveWay: true,
+                        label: "OVERTAKING",
+                        message: `You are overtaking ${other.name}: keep clear and pass wide.`,
+                    };
+                }
+
+                const playerTack = getBoatTack(b.heading);
+                const otherTack = getBoatTack(other.heading);
+                if (playerTack !== otherTack) {
+                    if (playerTack === "port") {
+                        return {
+                            playerGiveWay: true,
+                            label: "PORT KEEPS CLEAR",
+                            message: `${other.name} is on starboard tack. Port tack keeps clear.`,
+                        };
+                    }
+                    return {
+                        playerGiveWay: false,
+                        label: "STAND-ON",
+                        message: `You are on starboard tack. Hold course, but be ready to avoid collision.`,
+                    };
+                }
+
+                const playerWindward = isWindwardOf(b, other);
+                if (playerWindward) {
+                    return {
+                        playerGiveWay: true,
+                        label: "WINDWARD KEEPS CLEAR",
+                        message: `Same tack: you are windward of ${other.name}, so keep clear.`,
+                    };
+                }
+                return {
+                    playerGiveWay: false,
+                    label: "LEEWARD STAND-ON",
+                    message: `Same tack: you are leeward. Hold course, but avoid collision if needed.`,
+                };
+            }
+
+            function failRightOfWay(reason) {
+                if (state.rulesTrainer.failed) return;
+                state.rulesTrainer.failed = true;
+                state.rulesTrainer.failureReason = reason;
+                state.boat.speedForward = 0;
+                state.boat.speedLateral = 0;
+                state.boat.angularVel = 0;
+                setHTML(
+                    "rulesLossDetail",
+                    `${reason}<br />Press <span class="key-pill">R</span> or use the button below to reset and try again.`,
+                );
+                setStyle("rulesLossOverlay", "display", "block");
+            }
+
+            function updateRulesTraffic(dt) {
+                if (!isRulesMode()) return;
+                if (!state.rulesTrainer.traffic.length) resetRulesTraffic();
+                const b = state.boat;
+                state.rulesTrainer.traffic.forEach((boat, idx) => {
+                    boat.x +=
+                        Math.sin(boat.heading) *
+                        boat.speed *
+                        KNOTS_TO_MPS *
+                        dt *
+                        state.simSpeed;
+                    boat.y +=
+                        -Math.cos(boat.heading) *
+                        boat.speed *
+                        KNOTS_TO_MPS *
+                        dt *
+                        state.simSpeed;
+                    if (Math.hypot(boat.x - b.x, boat.y - b.y) > 440) {
+                        const slots = [
+                            { x: -210, y: -80, h: 82 },
+                            { x: 190, y: 55, h: -105 },
+                            { x: 35, y: -230, h: -8 },
+                        ];
+                        const slot = slots[idx % slots.length];
+                        boat.x = b.x + slot.x;
+                        boat.y = b.y + slot.y;
+                        boat.heading = slot.h * DEG_TO_RAD;
+                    }
+                });
+            }
+
+            function checkRightOfWay() {
+                if (!isRulesMode() || state.rulesTrainer.failed) return;
+                let nearest = null;
+                let nearestDist = Infinity;
+                state.rulesTrainer.traffic.forEach((boat) => {
+                    const dist = Math.hypot(
+                        boat.x - state.boat.x,
+                        boat.y - state.boat.y,
+                    );
+                    if (dist < nearestDist) {
+                        nearest = boat;
+                        nearestDist = dist;
+                    }
+                });
+                if (!nearest) return;
+
+                const situation = getRightOfWaySituation(nearest);
+                state.rulesTrainer.activeHint = situation.message;
+
+                if (nearestDist < 30 && situation.playerGiveWay) {
+                    failRightOfWay(
+                        `${situation.label}: ${situation.message} You came within ${Math.round(nearestDist)}m.`,
+                    );
+                } else if (nearestDist < 70) {
+                    state.windShiftMessage = `⚖️ ${situation.message}`;
+                }
             }
 
             function spawnNextTarget(whoWon) {
@@ -2262,7 +2472,7 @@
                 state.simTime += dt * state.simSpeed;
                 const b = state.boat;
                 const g = state.ghost;
-                if (state.grounded) {
+                if (state.grounded || state.rulesTrainer.failed) {
                     b.speedForward = 0;
                     b.speedLateral = 0;
                     b.angularVel = 0;
@@ -2343,6 +2553,9 @@
                     ghostDiag = simulateBoatPhysics(g, dt, true);
                     g.sogKnots = ghostDiag.sogKnots;
                 }
+
+                updateRulesTraffic(dt);
+                checkRightOfWay();
 
                 const activeTarget =
                     state.mode === "endless"
@@ -2590,7 +2803,7 @@
             }
 
             function toggleVariableWind() {
-                if (isManualWindMode()) return;
+                if (isManualWindMode() || isRulesMode()) return;
                 state.wind.variable = !state.wind.variable;
                 state.wind.baseDir = state.wind.dir;
                 state.wind.targetDir = state.wind.dir;
@@ -2602,7 +2815,8 @@
             }
 
             function toggleVariableWaves() {
-                if (isBasicMode() || isManualWindMode()) return;
+                if (isBasicMode() || isManualWindMode() || isRulesMode())
+                    return;
                 state.waves.enabled = !state.waves.enabled;
                 if (!state.waves.enabled) {
                     state.waves.height = state.waves.baseHeight;
@@ -2617,7 +2831,8 @@
             }
 
             function toggleCurrents() {
-                if (isBasicMode() || isManualWindMode()) return;
+                if (isBasicMode() || isManualWindMode() || isRulesMode())
+                    return;
                 state.current.enabled = !state.current.enabled;
                 const btn = document.getElementById("btnCurrents");
                 if (btn) {
@@ -2709,7 +2924,11 @@
                 state.windShiftMessage = "";
                 state.grounded = false;
                 state.groundedReason = "";
+                state.rulesTrainer.failed = false;
+                state.rulesTrainer.failureReason = "";
                 setStyle("groundedOverlay", "display", "none");
+                setStyle("rulesLossOverlay", "display", "none");
+                resetRulesTraffic();
                 applyModeSettings();
                 applyMobileRegattaDefaults();
                 resetComfortChallenge();
@@ -2744,7 +2963,7 @@
             const ghostSelectEl = document.getElementById("ghostSelect");
             if (ghostSelectEl) {
                 ghostSelectEl.addEventListener("change", (e) => {
-                    if (isBasicMode() || isManualWindMode()) {
+                    if (isBasicMode() || isManualWindMode() || isRulesMode()) {
                         e.target.value = "off";
                         e.target.blur();
                         return;
@@ -2765,7 +2984,7 @@
                 waveSelectEl.addEventListener("change", (e) => {
                     const val = e.target.value;
                     e.target.blur();
-                    if (isBasicMode() || isManualWindMode()) {
+                    if (isBasicMode() || isManualWindMode() || isRulesMode()) {
                         e.target.value = "off";
                         return;
                     }
@@ -2870,6 +3089,10 @@
                 document.getElementById("btnGroundedReset");
             if (btnGroundedReset)
                 btnGroundedReset.addEventListener("click", resetSim);
+
+            const btnRulesReset = document.getElementById("btnRulesReset");
+            if (btnRulesReset)
+                btnRulesReset.addEventListener("click", resetSim);
 
             const btnSpeedEl = document.getElementById("btnSpeed");
             if (btnSpeedEl) {
@@ -3109,6 +3332,10 @@
                 // 11. Draw Ghost Rival Boat
                 if (!isBasicMode() && g.enabled && g.difficulty !== "off") {
                     drawGhostBoat(g);
+                }
+
+                if (isRulesMode()) {
+                    drawRulesTraffic();
                 }
 
                 // 12. Draw Player Boat
@@ -3363,6 +3590,37 @@
                 ctx.restore();
 
                 ctx.restore();
+            }
+
+            function drawRulesTraffic() {
+                state.rulesTrainer.traffic.forEach((boat) => {
+                    ctx.save();
+                    ctx.translate(boat.x, boat.y);
+                    ctx.font = "bold 9px sans-serif";
+                    ctx.fillStyle = boat.color;
+                    ctx.textAlign = "center";
+                    ctx.fillText(boat.name, 0, -22);
+                    ctx.rotate(boat.heading);
+
+                    ctx.beginPath();
+                    ctx.moveTo(0, -12);
+                    ctx.bezierCurveTo(4.5, -6, 5, 6, 3.5, 11);
+                    ctx.lineTo(-3.5, 11);
+                    ctx.bezierCurveTo(-5, 6, -4.5, -6, 0, -12);
+                    ctx.fillStyle = `${boat.color}cc`;
+                    ctx.fill();
+                    ctx.strokeStyle = "rgba(255,255,255,0.85)";
+                    ctx.lineWidth = 1.2;
+                    ctx.stroke();
+
+                    ctx.strokeStyle = boat.color;
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(0, -3);
+                    ctx.lineTo(0, 13);
+                    ctx.stroke();
+                    ctx.restore();
+                });
             }
 
             function drawGhostBoat(g) {
@@ -3685,6 +3943,7 @@
                 if (state.grounded) {
                     setStyle("groundedOverlay", "display", "block");
                     setStyle("comfortLossOverlay", "display", "none");
+                    setStyle("rulesLossOverlay", "display", "none");
                     setStyle("coachBanner", "borderColor", "var(--accent-red)");
                     setText("coachBadge", "🏝️ GROUNDED — YOU'RE STUCK");
                     setStyle("coachBadge", "color", "var(--accent-red)");
@@ -3699,6 +3958,47 @@
                         'Press <span class="key-pill">R</span> or click Reset & Close to restart in open water.',
                     );
                     return;
+                }
+
+                if (state.rulesTrainer.failed) {
+                    setStyle("rulesLossOverlay", "display", "block");
+                    setStyle("comfortLossOverlay", "display", "none");
+                    setStyle("coachBanner", "borderColor", "var(--accent-red)");
+                    setText("coachBadge", "⚖️ RIGHT-OF-WAY MISTAKE");
+                    setStyle("coachBadge", "color", "var(--accent-red)");
+                    setText("coachStatusTag", "RESET TO TRY AGAIN");
+                    setStyle("coachStatusTag", "color", "var(--accent-red)");
+                    setHTML(
+                        "coachInstruction",
+                        state.rulesTrainer.failureReason,
+                    );
+                    setHTML(
+                        "coachDetail",
+                        'Press <span class="key-pill">R</span> or click Reset & Close to restart the drill.',
+                    );
+                    return;
+                }
+
+                if (isRulesMode()) {
+                    setStyle(
+                        "coachBanner",
+                        "borderColor",
+                        "var(--accent-yellow)",
+                    );
+                    setText("coachBadge", "⚖️ RIGHT-OF-WAY TRAINER");
+                    setStyle("coachBadge", "color", "var(--accent-yellow)");
+                    setText("coachStatusTag", "KEEP CLEAR");
+                    setStyle("coachStatusTag", "color", "var(--accent-yellow)");
+                    if (!state.windShiftMessage) {
+                        setHTML(
+                            "coachInstruction",
+                            state.rulesTrainer.activeHint,
+                        );
+                    }
+                    setHTML(
+                        "coachDetail",
+                        "Rules: port keeps clear of starboard; windward keeps clear of leeward; overtaking keeps clear.",
+                    );
                 }
 
                 if (state.mode === "comfort") {
