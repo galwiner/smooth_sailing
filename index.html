@@ -2592,6 +2592,24 @@
                 ctx.lineWidth = 1.5;
                 ctx.stroke();
 
+                const noGoLabelX = b.x - Math.sin(w.dir) * 48;
+                const noGoLabelY = b.y + Math.cos(w.dir) * 48;
+                ctx.save();
+                ctx.translate(noGoLabelX, noGoLabelY);
+                ctx.rotate(w.dir);
+                ctx.font = "bold 9px sans-serif";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillStyle = "rgba(127, 29, 29, 0.68)";
+                ctx.strokeStyle = "rgba(254, 202, 202, 0.85)";
+                ctx.lineWidth = 3;
+                ctx.strokeText("NO-GO", 0, -5);
+                ctx.fillText("NO-GO", 0, -5);
+                ctx.font = "7px sans-serif";
+                ctx.strokeText("into wind", 0, 6);
+                ctx.fillText("into wind", 0, 6);
+                ctx.restore();
+
                 // 10. Force Vectors
                 if (state.showVectors && diag) {
                     drawArrow(
