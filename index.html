@@ -1484,6 +1484,10 @@
             const MPS_TO_KNOTS = 1.94384;
             const DEG_TO_RAD = Math.PI / 180;
             const RAD_TO_DEG = 180 / Math.PI;
+            const AIR_DENSITY = 1.225;
+            const SPINNAKER_EFFECTIVE_AREA = 44;
+            const SPINNAKER_TRUE_WIND_SHARE = 0.85;
+            const SPINNAKER_APPARENT_WIND_SHARE = 0.25;
 
             const state = {
                 mode: "basic",
@@ -2506,7 +2510,7 @@
 
                 const q =
                     0.5 *
-                    1.225 *
+                    AIR_DENSITY *
                     Math.pow(appWindSpeedMps, 2) *
                     b.sailArea *
                     powerMult;
@@ -2541,11 +2545,16 @@
                             1 - Math.abs(twaAbs - peak) / 45,
                         );
                         b.spinnakerPower = Math.max(0.25, normalized);
-                        spinnakerDrive =
+                        const spinnakerWindPressure =
                             0.5 *
-                            1.225 *
-                            Math.pow(appWindSpeedMps, 2) *
-                            18 *
+                            AIR_DENSITY *
+                            (SPINNAKER_TRUE_WIND_SHARE *
+                                Math.pow(trueWindSpeedMps, 2) +
+                                SPINNAKER_APPARENT_WIND_SHARE *
+                                    Math.pow(appWindSpeedMps, 2));
+                        spinnakerDrive =
+                            spinnakerWindPressure *
+                            SPINNAKER_EFFECTIVE_AREA *
                             b.spinnakerPower;
                     } else {
                         b.spinnakerPower = 0;
