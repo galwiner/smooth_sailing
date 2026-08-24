@@ -2690,8 +2690,8 @@
                 ctx.lineWidth = 1.5;
                 ctx.stroke();
 
-                const noGoLabelX = b.x - Math.sin(w.dir) * 48;
-                const noGoLabelY = b.y + Math.cos(w.dir) * 48;
+                const noGoLabelX = b.x + Math.sin(w.dir) * 48;
+                const noGoLabelY = b.y - Math.cos(w.dir) * 48;
                 ctx.save();
                 ctx.translate(noGoLabelX, noGoLabelY);
                 ctx.rotate(w.dir);
