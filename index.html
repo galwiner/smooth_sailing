@@ -1875,56 +1875,50 @@
                 return rad;
             }
 
+            function headingFromVector(vx, vy) {
+                return Math.atan2(vx, -vy) * RAD_TO_DEG;
+            }
+
             function getRulesTrafficSlots() {
+                const b = state.boat;
+                const target = state.target || { x: b.x + 210, y: b.y - 125 };
+                const routeX = target.x - b.x;
+                const routeY = target.y - b.y;
+                const routeLen = Math.hypot(routeX, routeY) || 1;
+                const ux = routeX / routeLen;
+                const uy = routeY / routeLen;
+                const px = -uy;
+                const py = ux;
+
+                const slotAt = (along, lateral, direction = 1) => ({
+                    x: ux * routeLen * along + px * lateral,
+                    y: uy * routeLen * along + py * lateral,
+                    h: headingFromVector(px * direction, py * direction),
+                });
+
+                const routeH = headingFromVector(ux, uy);
+                const s0 = slotAt(0.32, -92, 1);
+                const s1 = slotAt(0.42, 108, -1);
+                const s2 = slotAt(0.58, -132, 1);
+                const s3 = slotAt(0.7, 124, -1);
+                const s4 = slotAt(0.52, -55, 1);
+                const s5 = slotAt(0.77, 58, -1);
+
                 return [
-                    {
-                        name: "Starboard Traffic",
-                        x: -240,
-                        y: -135,
-                        h: 72,
-                        s: 2.8,
-                        c: "#f97316",
-                    },
-                    {
-                        name: "Leeward Boat",
-                        x: 250,
-                        y: 115,
-                        h: -108,
-                        s: 2.5,
-                        c: "#eab308",
-                    },
+                    { name: "Starboard Traffic", ...s0, s: 2.9, c: "#f97316" },
+                    { name: "Leeward Boat", ...s1, s: 2.6, c: "#eab308" },
                     {
                         name: "Overtaken Boat",
-                        x: -35,
-                        y: -260,
-                        h: -8,
-                        s: 1.6,
+                        x: ux * routeLen * 0.24 - px * 18,
+                        y: uy * routeLen * 0.24 - py * 18,
+                        h: routeH,
+                        s: 1.5,
                         c: "#a78bfa",
                     },
-                    {
-                        name: "Crossing Sloop",
-                        x: 285,
-                        y: -155,
-                        h: -70,
-                        s: 2.7,
-                        c: "#22d3ee",
-                    },
-                    {
-                        name: "Close Reach Boat",
-                        x: -255,
-                        y: 185,
-                        h: 36,
-                        s: 2.4,
-                        c: "#fb7185",
-                    },
-                    {
-                        name: "Training Dinghy",
-                        x: 120,
-                        y: 285,
-                        h: -164,
-                        s: 1.9,
-                        c: "#34d399",
-                    },
+                    { name: "Crossing Sloop", ...s2, s: 3.0, c: "#22d3ee" },
+                    { name: "Close Reach Boat", ...s3, s: 2.4, c: "#fb7185" },
+                    { name: "Training Dinghy", ...s5, s: 2.1, c: "#34d399" },
+                    { name: "Club Racer", ...s4, s: 2.7, c: "#60a5fa" },
                 ];
             }
 
@@ -3036,8 +3030,8 @@
                 };
 
                 if (isRulesMode()) {
-                    resetRulesTraffic();
                     placeRulesTarget();
+                    resetRulesTraffic();
                 }
 
                 state.ghost.x = 25;
