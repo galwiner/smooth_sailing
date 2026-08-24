@@ -1740,9 +1740,13 @@
                 const cur = state.current;
                 const waves = state.waves;
 
-                const steerEffect = (Math.max(1.0, b.speedForward) / 4.0) * 0.8;
+                const rudderFlowSpeed = Math.max(0, b.speedForward);
+                const rudderAuthority = Math.max(
+                    0,
+                    Math.min(1, (rudderFlowSpeed - 0.15) / 3.5),
+                );
                 const targetAngularVel =
-                    Math.sin(b.rudder * DEG_TO_RAD) * steerEffect * 1.6;
+                    Math.sin(b.rudder * DEG_TO_RAD) * rudderAuthority * 1.25;
                 b.angularVel +=
                     (targetAngularVel - b.angularVel) *
                     Math.min(1.0, dt * 5.0 * state.simSpeed);
