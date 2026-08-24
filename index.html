@@ -1875,58 +1875,71 @@
                 return rad;
             }
 
-            function resetRulesTraffic() {
-                const b = state.boat;
-                state.rulesTrainer.traffic = [
+            function getRulesTrafficSlots() {
+                return [
                     {
                         name: "Starboard Traffic",
-                        x: b.x - 185,
-                        y: b.y - 95,
-                        heading: 82 * DEG_TO_RAD,
-                        speed: 2.8,
-                        color: "#f97316",
+                        x: -240,
+                        y: -135,
+                        h: 72,
+                        s: 2.8,
+                        c: "#f97316",
                     },
                     {
                         name: "Leeward Boat",
-                        x: b.x + 175,
-                        y: b.y + 60,
-                        heading: -105 * DEG_TO_RAD,
-                        speed: 2.5,
-                        color: "#eab308",
+                        x: 250,
+                        y: 115,
+                        h: -108,
+                        s: 2.5,
+                        c: "#eab308",
                     },
                     {
                         name: "Overtaken Boat",
-                        x: b.x + 20,
-                        y: b.y - 225,
-                        heading: -8 * DEG_TO_RAD,
-                        speed: 1.6,
-                        color: "#a78bfa",
+                        x: -35,
+                        y: -260,
+                        h: -8,
+                        s: 1.6,
+                        c: "#a78bfa",
                     },
                     {
                         name: "Crossing Sloop",
-                        x: b.x + 235,
-                        y: b.y - 80,
-                        heading: -78 * DEG_TO_RAD,
-                        speed: 2.7,
-                        color: "#22d3ee",
+                        x: 285,
+                        y: -155,
+                        h: -70,
+                        s: 2.7,
+                        c: "#22d3ee",
                     },
                     {
                         name: "Close Reach Boat",
-                        x: b.x - 140,
-                        y: b.y + 150,
-                        heading: 38 * DEG_TO_RAD,
-                        speed: 2.4,
-                        color: "#fb7185",
+                        x: -255,
+                        y: 185,
+                        h: 36,
+                        s: 2.4,
+                        c: "#fb7185",
                     },
                     {
                         name: "Training Dinghy",
-                        x: b.x + 85,
-                        y: b.y + 230,
-                        heading: -170 * DEG_TO_RAD,
-                        speed: 1.9,
-                        color: "#34d399",
+                        x: 120,
+                        y: 285,
+                        h: -164,
+                        s: 1.9,
+                        c: "#34d399",
                     },
                 ];
+            }
+
+            function resetRulesTraffic() {
+                const b = state.boat;
+                state.rulesTrainer.traffic = getRulesTrafficSlots().map(
+                    (slot) => ({
+                        name: slot.name,
+                        x: b.x + slot.x,
+                        y: b.y + slot.y,
+                        heading: slot.h * DEG_TO_RAD,
+                        speed: slot.s,
+                        color: slot.c,
+                    }),
+                );
                 state.rulesTrainer.activeHint =
                     "Sail to the target while keeping clear when you are the give-way boat.";
             }
@@ -2042,21 +2055,40 @@
                         KNOTS_TO_MPS *
                         dt *
                         state.simSpeed;
-                    if (Math.hypot(boat.x - b.x, boat.y - b.y) > 440) {
-                        const slots = [
-                            { x: -220, y: -100, h: 82 },
-                            { x: 205, y: 65, h: -105 },
-                            { x: 30, y: -245, h: -8 },
-                            { x: 250, y: -95, h: -78 },
-                            { x: -160, y: 165, h: 38 },
-                            { x: 90, y: 250, h: -170 },
-                        ];
-                        const slot = slots[idx % slots.length];
+                    if (Math.hypot(boat.x - b.x, boat.y - b.y) > 460) {
+                        const slot =
+                            getRulesTrafficSlots()[
+                                idx % getRulesTrafficSlots().length
+                            ];
                         boat.x = b.x + slot.x;
                         boat.y = b.y + slot.y;
                         boat.heading = slot.h * DEG_TO_RAD;
+                        boat.speed = slot.s;
                     }
                 });
+                separateTrafficBoats();
+            }
+
+            function separateTrafficBoats() {
+                const boats = state.rulesTrainer.traffic;
+                for (let i = 0; i < boats.length; i++) {
+                    for (let j = i + 1; j < boats.length; j++) {
+                        const a = boats[i];
+                        const b = boats[j];
+                        const dx = b.x - a.x;
+                        const dy = b.y - a.y;
+                        const dist = Math.hypot(dx, dy) || 1;
+                        if (dist < 42) {
+                            const push = (42 - dist) * 0.5;
+                            const nx = dx / dist;
+                            const ny = dy / dist;
+                            a.x -= nx * push;
+                            a.y -= ny * push;
+                            b.x += nx * push;
+                            b.y += ny * push;
+                        }
+                    }
+                }
             }
 
             function checkRightOfWay() {
