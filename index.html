@@ -560,6 +560,20 @@
                 </div>
             </div>
 
+            <div class="loss-overlay" id="groundedOverlay">
+                <div class="loss-overlay-title">🏝️ You're stuck!</div>
+                <div class="loss-overlay-detail" id="groundedOverlayDetail">
+                    You ran aground on land or an island.<br />
+                    Press <span class="key-pill">R</span> or use the button
+                    below to reset and try again.
+                </div>
+                <div class="loss-overlay-actions">
+                    <button class="btn" id="btnGroundedReset">
+                        Reset &amp; Close (<span class="key-pill">R</span>)
+                    </button>
+                </div>
+            </div>
+
             <div class="coach-banner" id="coachBanner">
                 <div class="coach-header">
                     <span id="coachBadge" style="color: var(--accent-blue)"
@@ -1344,6 +1358,8 @@
                 isAutopilot: false,
                 aiTackState: 0,
                 windShiftMessage: "",
+                grounded: false,
+                groundedReason: "",
 
                 scenery: {
                     shoreX: -255,
@@ -1990,6 +2006,13 @@
                 state.simTime += dt * state.simSpeed;
                 const b = state.boat;
                 const g = state.ghost;
+                if (state.grounded) {
+                    b.speedForward = 0;
+                    b.speedLateral = 0;
+                    b.angularVel = 0;
+                    b.rudder = 0;
+                    return;
+                }
                 const w = state.wind;
                 const cur = state.current;
                 const waves = state.waves;
@@ -2428,6 +2451,9 @@
                 state.wind.dir = 0;
                 state.wind.targetDir = 0;
                 state.windShiftMessage = "";
+                state.grounded = false;
+                state.groundedReason = "";
+                setStyle("groundedOverlay", "display", "none");
                 applyModeSettings();
                 resetComfortChallenge();
                 state.target = {
@@ -2582,6 +2608,11 @@
             );
             if (btnComfortLossReset)
                 btnComfortLossReset.addEventListener("click", resetSim);
+
+            const btnGroundedReset =
+                document.getElementById("btnGroundedReset");
+            if (btnGroundedReset)
+                btnGroundedReset.addEventListener("click", resetSim);
 
             const btnSpeedEl = document.getElementById("btnSpeed");
             if (btnSpeedEl) {
@@ -2831,15 +2862,30 @@
                 updateInstructorHUD(diag, activeTarget);
             }
 
+            function groundBoat(reason) {
+                if (state.grounded) return;
+                state.grounded = true;
+                state.groundedReason = reason;
+                state.boat.speedForward = 0;
+                state.boat.speedLateral = 0;
+                state.boat.angularVel = 0;
+                state.boat.rudder = 0;
+                state.windShiftMessage = `🏝️ STUCK: ${reason}. Press R to reset.`;
+                setHTML(
+                    "groundedOverlayDetail",
+                    `${reason}.<br />Press <span class="key-pill">R</span> or use the button below to reset and try again.`,
+                );
+                setStyle("groundedOverlay", "display", "block");
+            }
+
             function keepBoatOffScenery(b) {
                 if (!state.showScenery) return;
                 const safeShoreX = state.scenery.shoreX + 24;
                 if (b.x < safeShoreX) {
                     b.x = safeShoreX;
-                    b.speedForward *= 0.45;
-                    b.speedLateral = Math.max(0, b.speedLateral);
-                    state.windShiftMessage =
-                        "🏝️ Shallow shore! Turn back into open water.";
+                    b.speedForward = 0;
+                    b.speedLateral = 0;
+                    groundBoat("You ran aground on the shoreline");
                 }
 
                 state.scenery.islands.forEach((island) => {
@@ -2852,9 +2898,9 @@
                         const angle = Math.atan2(ny, nx);
                         b.x = island.x + Math.cos(angle) * (island.rx + 14);
                         b.y = island.y + Math.sin(angle) * (island.ry + 14);
-                        b.speedForward *= 0.55;
-                        b.speedLateral *= 0.25;
-                        state.windShiftMessage = `🏝️ Avoid ${island.label}: sail around the island.`;
+                        b.speedForward = 0;
+                        b.speedLateral = 0;
+                        groundBoat(`You ran aground on ${island.label}`);
                     }
                 });
             }
@@ -3377,6 +3423,25 @@
                         "backgroundColor",
                         "var(--accent-red)",
                     );
+                }
+
+                if (state.grounded) {
+                    setStyle("groundedOverlay", "display", "block");
+                    setStyle("comfortLossOverlay", "display", "none");
+                    setStyle("coachBanner", "borderColor", "var(--accent-red)");
+                    setText("coachBadge", "🏝️ GROUNDED — YOU'RE STUCK");
+                    setStyle("coachBadge", "color", "var(--accent-red)");
+                    setText("coachStatusTag", "RESET TO TRY AGAIN");
+                    setStyle("coachStatusTag", "color", "var(--accent-red)");
+                    setHTML(
+                        "coachInstruction",
+                        `${state.groundedReason}. You can't sail off land from here.`,
+                    );
+                    setHTML(
+                        "coachDetail",
+                        'Press <span class="key-pill">R</span> or click Reset & Close to restart in open water.',
+                    );
+                    return;
                 }
 
                 if (state.mode === "comfort") {
