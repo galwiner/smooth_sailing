@@ -1331,7 +1331,7 @@
                 autoTrim: true,
                 showVectors: true,
                 showScenery: true,
-                simSpeed: 1.0,
+                simSpeed: 1.25,
                 camera: { scale: 1.85 },
                 wake: [],
                 windParticles: [],
@@ -2587,12 +2587,14 @@
             if (btnSpeedEl) {
                 btnSpeedEl.addEventListener("click", () => {
                     state.simSpeed =
-                        state.simSpeed === 1.0
+                        state.simSpeed === 1.25
                             ? 2.0
                             : state.simSpeed === 2.0
                               ? 3.0
-                              : 1.0;
-                    btnSpeedEl.textContent = `Speed: ${state.simSpeed}x`;
+                              : 1.25;
+                    const speedLabel =
+                        state.simSpeed === 1.25 ? "1" : state.simSpeed;
+                    btnSpeedEl.textContent = `Speed: ${speedLabel}x`;
                 });
             }
 
