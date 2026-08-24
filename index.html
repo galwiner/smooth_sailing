@@ -2,7 +2,10 @@
 <html lang="en">
     <head>
         <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+        />
         <title>
             Sailing Simulator — Regatta Racing, Wind Shifts & Currents
         </title>
@@ -513,6 +516,209 @@
             .tour-hidden {
                 display: none;
             }
+
+            @media (pointer: coarse) {
+                .btn,
+                .helm-btn,
+                .select-input {
+                    min-height: 44px;
+                }
+
+                input[type="range"] {
+                    min-height: 34px;
+                }
+            }
+
+            @media (max-width: 760px) {
+                body {
+                    height: 100dvh;
+                    width: 100vw;
+                    overflow: hidden;
+                    padding: env(safe-area-inset-top) env(safe-area-inset-right)
+                        env(safe-area-inset-bottom) env(safe-area-inset-left);
+                }
+
+                #canvas-container {
+                    height: 100dvh;
+                }
+
+                .coach-banner {
+                    top: max(8px, env(safe-area-inset-top));
+                    width: calc(100vw - 16px);
+                    padding: 8px 10px;
+                    border-radius: 12px;
+                    gap: 2px;
+                }
+
+                .coach-header {
+                    font-size: 9px;
+                    letter-spacing: 0.06em;
+                }
+
+                .coach-instruction {
+                    font-size: 13px;
+                    line-height: 1.22;
+                }
+
+                .coach-detail {
+                    display: none;
+                }
+
+                .hud-left {
+                    top: 82px;
+                    left: 8px;
+                    right: auto;
+                    gap: 5px;
+                    max-width: 162px;
+                }
+
+                .hud-left .comfort-card,
+                .hud-left #raceCard,
+                .hud-left .instruments-grid {
+                    display: none;
+                }
+
+                .hud-left .card {
+                    width: 162px !important;
+                    min-width: 0;
+                    padding: 7px 9px;
+                    border-radius: 9px;
+                }
+
+                .env-badge-container {
+                    gap: 4px;
+                }
+
+                .current-badge,
+                .waves-badge {
+                    display: none;
+                }
+
+                .wind-badge {
+                    padding: 5px 6px;
+                }
+
+                #windStatusText {
+                    font-size: 10px !important;
+                }
+
+                #windSubText {
+                    font-size: 8px !important;
+                }
+
+                .hud-right {
+                    top: auto;
+                    left: 8px;
+                    right: 8px;
+                    bottom: max(8px, env(safe-area-inset-bottom));
+                    max-height: none;
+                    overflow: visible;
+                    z-index: 45;
+                }
+
+                .controls-panel {
+                    min-width: 0;
+                    width: 100%;
+                    gap: 10px;
+                    padding: 10px;
+                    border-radius: 14px;
+                    background: rgba(13, 23, 41, 0.9);
+                }
+
+                .hud-right > .card:not(.controls-panel) {
+                    display: none;
+                }
+
+                .mobile-advanced-control,
+                #btnAutoTrim,
+                #btnVectors,
+                #btnCurrents,
+                #btnScenery,
+                #btnSpeed {
+                    display: none !important;
+                }
+
+                .controls-panel > div {
+                    gap: 8px !important;
+                }
+
+                .mobile-primary-control {
+                    gap: 6px;
+                }
+
+                .slider-header {
+                    font-size: 12px;
+                    color: #e2e8f0;
+                }
+
+                input[type="range"] {
+                    width: 100%;
+                    height: 34px;
+                }
+
+                .btn {
+                    font-size: 14px;
+                    border-radius: 10px;
+                    padding: 10px 12px;
+                }
+
+                .on-screen-helm {
+                    display: none;
+                }
+
+                .target-hud {
+                    left: 8px;
+                    right: 8px;
+                    bottom: calc(178px + env(safe-area-inset-bottom));
+                    transform: none;
+                    justify-content: space-between;
+                    gap: 8px;
+                    padding: 8px 10px;
+                    border-radius: 14px;
+                    font-size: 11px;
+                    overflow-x: auto;
+                }
+
+                .target-hud > div:nth-child(3),
+                .target-hud > div:nth-child(4) {
+                    display: none;
+                }
+
+                .tour-card,
+                .loss-overlay {
+                    width: calc(100vw - 28px);
+                    padding: 20px 18px;
+                }
+
+                .tour-title,
+                .loss-overlay-title {
+                    font-size: 24px;
+                }
+            }
+
+            @media (max-width: 760px) and (orientation: landscape) {
+                .coach-banner {
+                    max-width: calc(100vw - 240px);
+                    left: 8px;
+                    transform: none;
+                }
+
+                .hud-left {
+                    display: none;
+                }
+
+                .hud-right {
+                    left: auto;
+                    width: min(330px, 42vw);
+                }
+
+                .target-hud {
+                    left: 8px;
+                    right: auto;
+                    width: min(420px, 52vw);
+                    bottom: max(8px, env(safe-area-inset-bottom));
+                }
+            }
         </style>
     </head>
     <body>
@@ -860,7 +1066,7 @@
 
             <div class="hud-right">
                 <div class="card controls-panel">
-                    <div>
+                    <div class="mobile-advanced-control">
                         <div class="card-title">Game Mode</div>
                         <select class="select-input" id="modeSelect">
                             <option value="basic" selected>
@@ -881,7 +1087,7 @@
                         </select>
                     </div>
 
-                    <div>
+                    <div class="mobile-advanced-control">
                         <div class="card-title">Ghost Competitor AI</div>
                         <select class="select-input" id="ghostSelect">
                             <option value="hard">
@@ -899,7 +1105,7 @@
                         </select>
                     </div>
 
-                    <div>
+                    <div class="mobile-advanced-control">
                         <div class="card-title">Wave State</div>
                         <select class="select-input" id="waveSelect">
                             <option value="moderate">
@@ -914,7 +1120,7 @@
                     </div>
 
                     <button
-                        class="btn"
+                        class="btn mobile-advanced-control"
                         id="btnVariableWind"
                         title="Variable Wind: Slowly shifts wind direction and strength. Starts OFF in Basic Wind Mode."
                     >
@@ -922,7 +1128,7 @@
                     </button>
 
                     <div
-                        class="slider-group"
+                        class="slider-group mobile-advanced-control"
                         id="windDirectionGroup"
                         title="Manual Wind Direction: Choose the compass direction the true wind comes FROM."
                     >
@@ -941,7 +1147,7 @@
                     </div>
 
                     <button
-                        class="btn active"
+                        class="btn active mobile-advanced-control"
                         id="btnVariableWaves"
                         title="Variable Waves: Slowly changes wave height and frequency around the selected sea state."
                     >
@@ -949,7 +1155,7 @@
                     </button>
 
                     <button
-                        class="btn demo-btn"
+                        class="btn demo-btn mobile-advanced-control"
                         id="btnAutopilot"
                         title="AI Autopilot: Takes control of YOUR boat to demonstrate optimal racing paths. Press P to toggle."
                     >
@@ -959,7 +1165,7 @@
                     </button>
 
                     <div
-                        class="slider-group"
+                        class="slider-group mobile-primary-control"
                         title="Rudder Angle (A / D): Steer helm left/right. Release keys to center rudder at 0°."
                     >
                         <div class="slider-header">
@@ -980,7 +1186,7 @@
                     </div>
 
                     <div
-                        class="slider-group"
+                        class="slider-group mobile-primary-control"
                         title="Main Sheet (W / S): Controls boom trim angle."
                     >
                         <div class="slider-header">
@@ -1396,6 +1602,41 @@
                 return state.mode === "manual";
             }
 
+            function isMobileLayout() {
+                return window.matchMedia("(max-width: 760px)").matches;
+            }
+
+            function syncToggleButton(id, active, label) {
+                const btn = document.getElementById(id);
+                if (!btn) return;
+                btn.classList.toggle("active", active);
+                btn.textContent = `${label}: ${active ? "ON" : "OFF"}`;
+            }
+
+            function applyMobileRegattaDefaults() {
+                if (!isMobileLayout()) return;
+                state.mode = "classic";
+                state.current.enabled = false;
+                state.ghost.enabled = false;
+                state.ghost.difficulty = "off";
+                state.waves.enabled = false;
+                state.waves.baseHeight = 0;
+                state.waves.height = 0;
+                state.wind.variable = false;
+                state.autoTrim = false;
+                state.showVectors = false;
+                const modeSelect = document.getElementById("modeSelect");
+                if (modeSelect) modeSelect.value = "classic";
+                const ghostSelect = document.getElementById("ghostSelect");
+                if (ghostSelect) ghostSelect.value = "off";
+                const waveSelect = document.getElementById("waveSelect");
+                if (waveSelect) waveSelect.value = "off";
+                state.windShiftMessage =
+                    "⛵ Mobile Regatta: use the Rudder and Main Sheet controls to sail the course.";
+                syncToggleButton("btnAutoTrim", state.autoTrim, "Auto-Trim");
+                syncToggleButton("btnVectors", state.showVectors, "Vectors");
+            }
+
             function updateWindDirectionControl(deg) {
                 const normalizedDeg = ((Math.round(deg) % 360) + 360) % 360;
                 setText(
@@ -1559,6 +1800,7 @@
                             : state.mode === "comfort"
                               ? "rough"
                               : "moderate";
+                applyMobileRegattaDefaults();
                 syncFeatureControls();
             }
 
@@ -2455,6 +2697,7 @@
                 state.groundedReason = "";
                 setStyle("groundedOverlay", "display", "none");
                 applyModeSettings();
+                applyMobileRegattaDefaults();
                 resetComfortChallenge();
                 state.target = {
                     name: "Buoy #1",
@@ -3816,6 +4059,11 @@
             if (tourSkipBtn) tourSkipBtn.addEventListener("click", closeTour);
 
             applyModeSettings();
+            applyMobileRegattaDefaults();
+            window.addEventListener("resize", () => {
+                applyModeSettings();
+                applyMobileRegattaDefaults();
+            });
             updateTour();
 
             // Resilient Loop with NaN and undefined protection
