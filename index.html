@@ -3013,7 +3013,7 @@
                             35,
                             b.rudder + 45 * dt * state.simSpeed,
                         );
-                    } else {
+                    } else if (!isMobileLayout()) {
                         b.rudder *= Math.max(
                             0,
                             1.0 - 6.0 * dt * state.simSpeed,
