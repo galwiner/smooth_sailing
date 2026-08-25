@@ -3049,10 +3049,22 @@
                 setText("sheetVal", `${Math.round(b.sheet)}°`);
             }
 
+            function getTackTargetHeading(heading, windDir, spinnakerHoisted) {
+                const twa = normalizeAngle(heading - windDir);
+                const side = Math.sign(twa || 1);
+
+                if (spinnakerHoisted && Math.abs(twa) >= 100 * DEG_TO_RAD) {
+                    return normalizeAngle(heading - side * (90 * DEG_TO_RAD));
+                }
+
+                return normalizeAngle(windDir - side * (45 * DEG_TO_RAD));
+            }
+
             function tackBoat() {
-                const twa = normalizeAngle(state.boat.heading - state.wind.dir);
-                state.tackTargetHeading = normalizeAngle(
-                    state.wind.dir - Math.sign(twa || 1) * (45 * DEG_TO_RAD),
+                state.tackTargetHeading = getTackTargetHeading(
+                    state.boat.heading,
+                    state.wind.dir,
+                    state.boat.spinnakerHoisted,
                 );
             }
 
