@@ -552,7 +552,7 @@
                 }
 
                 .coach-banner {
-                    top: max(8px, env(safe-area-inset-top));
+                    top: max(30px, calc(env(safe-area-inset-top) + 30px));
                     width: calc(100vw - 16px);
                     padding: 8px 10px;
                     border-radius: 12px;
@@ -637,10 +637,10 @@
                 .mobile-version-note {
                     display: block;
                     position: absolute;
-                    top: max(56px, calc(env(safe-area-inset-top) + 56px));
+                    top: max(6px, calc(env(safe-area-inset-top) + 6px));
                     left: 50%;
                     transform: translateX(-50%);
-                    z-index: 48;
+                    z-index: 55;
                     padding: 4px 8px;
                     border: 1px solid rgba(56, 189, 248, 0.35);
                     border-radius: 999px;
@@ -845,7 +845,8 @@
             </div>
 
             <div class="mobile-version-note">
-                <strong>Mobile lite:</strong> full simulator on desktop
+                This is a mobile versions. The desktop version has many more
+                features
             </div>
 
             <div class="coach-banner" id="coachBanner">
