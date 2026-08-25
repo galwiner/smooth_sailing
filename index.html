@@ -636,14 +636,22 @@
 
                 .mobile-version-note {
                     display: block;
-                    padding: 6px 8px;
+                    position: absolute;
+                    top: max(56px, calc(env(safe-area-inset-top) + 56px));
+                    left: 50%;
+                    transform: translateX(-50%);
+                    z-index: 48;
+                    padding: 4px 8px;
                     border: 1px solid rgba(56, 189, 248, 0.35);
-                    border-radius: 10px;
-                    background: rgba(56, 189, 248, 0.12);
+                    border-radius: 999px;
+                    background: rgba(13, 23, 41, 0.72);
+                    backdrop-filter: blur(8px);
                     color: #e0f2fe;
-                    font-size: 11px;
-                    line-height: 1.2;
+                    font-size: 10px;
+                    line-height: 1;
                     text-align: center;
+                    white-space: nowrap;
+                    pointer-events: none;
                 }
 
                 .mobile-version-note strong {
@@ -834,6 +842,10 @@
                         Reset &amp; Close (<span class="key-pill">R</span>)
                     </button>
                 </div>
+            </div>
+
+            <div class="mobile-version-note">
+                <strong>Mobile lite:</strong> full simulator on desktop
             </div>
 
             <div class="coach-banner" id="coachBanner">
@@ -1122,12 +1134,6 @@
 
             <div class="hud-right">
                 <div class="card controls-panel mobile-collapsed">
-                    <div class="mobile-version-note">
-                        <strong>Mobile lite:</strong> limited controls here —
-                        desktop has the full simulator with more modes and
-                        features.
-                    </div>
-
                     <div class="mobile-advanced-control">
                         <div class="card-title">Game Mode</div>
                         <select class="select-input" id="modeSelect">
